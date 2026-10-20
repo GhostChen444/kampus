@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Kampus – mes cours et mon PFE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+/* ===== DESIGN (CSS) ===== */
+:root{--bg:#F5F7FF;--card:#fff;--ink:#1A2142;--mute:#6B7396;--pri:#4C6FFF;--pri2:#8B7BFF;--ok:#12B886;--line:#E6EAFB;--r:18px}
+*{box-sizing:border-box;margin:0}
+body{font:15px/1.5 'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+h1{font-size:clamp(1.6rem,3vw,2.2rem);font-weight:800;letter-spacing:-.03em}
+h2{font-size:1.15rem;font-weight:700;margin:28px 0 12px}h3{font-weight:700;margin-bottom:12px}
+.shell{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+aside{background:#fff;border-right:1px solid var(--line);padding:22px 14px;position:sticky;top:0;height:100vh;overflow:auto}
+.logo{font-weight:800;font-size:1.3rem;padding:0 10px 18px;background:linear-gradient(90deg,var(--pri),var(--pri2));-webkit-background-clip:text;color:transparent}
+.nav{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:0;background:none;border-radius:12px;cursor:pointer;text-align:left;color:var(--mute);font-weight:500}
+.nav:hover{background:var(--bg)}.nav.on{background:#EEF1FF;color:var(--pri);font-weight:700}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.side-t{margin:18px 12px 6px;font-size:.8rem;color:var(--mute)}
+main{padding:32px clamp(16px,4vw,48px) 100px;max-width:1100px;width:100%}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:0 8px 30px -18px rgba(76,111,255,.35)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.tile{cursor:pointer;border:0;text-align:left;border-radius:var(--r);padding:18px;min-height:110px;display:flex;flex-direction:column;justify-content:space-between;transition:transform .15s}
+.tile:hover{transform:translateY(-3px)}.tile b{font-size:1.05rem}.tile small{opacity:.75}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:20px}
+.stat b{font-size:1.9rem;font-weight:800;display:block}.stat span{color:var(--mute)}
+.btn{border:0;background:linear-gradient(135deg,var(--pri),var(--pri2));color:#fff;padding:10px 18px;border-radius:12px;font-weight:700;cursor:pointer}
+.btn.ghost{background:#EEF1FF;color:var(--pri)}.btn.sm{padding:6px 12px;font-size:.85rem}.btn.del{background:#FFECEC;color:#E03131}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}.sp{justify-content:space-between}
+.tabs{display:flex;gap:6px;background:#EEF1FF;padding:5px;border-radius:14px;width:max-content;margin:18px 0}
+.tabs button{border:0;background:none;padding:8px 16px;border-radius:10px;cursor:pointer;font-weight:600;color:var(--mute)}
+.tabs .on{background:#fff;color:var(--pri);box-shadow:0 2px 8px rgba(76,111,255,.15)}
+.bar{height:10px;background:#E8ECFF;border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--pri),var(--ok));border-radius:9px;transition:width .5s}
+.note{margin-bottom:12px}.note p{white-space:pre-wrap;color:#3B4468;margin-top:6px}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:14px;cursor:pointer}
+.item{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}.item:last-child{border:0}
+.item.sub{margin-left:34px}.item .g{flex:1}.item small{color:var(--mute)}.done .t{text-decoration:line-through;opacity:.5}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--ok)}
+label{display:block;font-weight:600;font-size:.9rem;margin-bottom:12px}
+input:not([type=checkbox]),select,textarea{display:block;width:100%;margin-top:5px;padding:11px 13px;border:1.5px solid var(--line);border-radius:12px;background:#fff}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--pri);border-color:transparent}
+.empty{text-align:center;color:var(--mute);padding:30px}
+#modal{position:fixed;inset:0;background:rgba(26,33,66,.35);backdrop-filter:blur(6px);display:grid;place-items:center;padding:16px;z-index:9}
+#modal[hidden]{display:none}.sheet{background:#fff;border-radius:22px;padding:24px;width:min(560px,100%);max-height:90vh;overflow:auto}
+.sheet video,.sheet .big{width:100%;border-radius:14px;background:#000}
+.drop{border:2px dashed #BFC9FF;border-radius:24px;padding:48px 20px;text-align:center;background:#fff;cursor:pointer}
+.drop:hover{background:#F0F3FF}.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{display:flex;align-items:center;gap:6px;background:#EEF1FF;color:var(--pri);padding:6px 6px 6px 12px;border-radius:99px;font-weight:600}
+.chip button{border:0;background:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;color:var(--mute)}
+.center{min-height:100vh;display:grid;place-items:center;padding:20px}.center .card{width:min(440px,100%);padding:32px}
+.err{color:#E03131;margin-top:10px;min-height:1.4em}
+#toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;opacity:0;pointer-events:none;transition:.25s;z-index:20}
+#toast.on{opacity:1}
+.bottom{display:none}
+body{min-height:100dvh}
+.nav svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabs{max-width:100%;overflow-x:auto;scrollbar-width:none}.tabs button{white-space:nowrap}
+.two{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
+.chip small{opacity:.7;font-weight:500}
+.caps{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-top:16px}
+.cap{background:#fff;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
+.cap img{width:100%;aspect-ratio:4/3;object-fit:cover;cursor:pointer;display:block}
+.cb{padding:12px 14px}.cb p{color:#3B4468;white-space:pre-wrap;word-break:break-word}.cb p.none{color:var(--mute);font-style:italic}.cb .row{margin-top:10px}
+.pre{width:100%;max-height:240px;object-fit:contain;border-radius:14px;background:#F0F3FF;margin-bottom:14px}
+@media(max-width:1000px){.shell{grid-template-columns:210px 1fr}}
+@media(max-width:800px){.shell{display:block}aside{display:none}
+main{padding:20px 16px calc(92px + env(safe-area-inset-bottom))}
+.bottom{display:flex;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:5}
+.bottom .nav{flex:1;flex-direction:column;gap:3px;font-size:.74rem;justify-content:center;align-items:center;padding:8px 4px}
+.grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.tile{min-height:96px;padding:14px}
+.stats{grid-template-columns:repeat(2,1fr)}.caps{grid-template-columns:1fr 1fr}
+.btn{min-height:42px}input:not([type=checkbox]),select,textarea{font-size:16px}
+#modal{align-items:end;padding:0}.sheet{width:100%;border-radius:22px 22px 0 0;max-height:92dvh;padding:20px 18px calc(20px + env(safe-area-inset-bottom))}
+#toast{bottom:calc(88px + env(safe-area-inset-bottom));max-width:90vw;text-align:center}
+.item.sub{margin-left:16px}.center .card{padding:24px 20px}}
+@media(max-width:480px){.caps{grid-template-columns:1fr}.two{grid-template-columns:1fr 1fr}.two label:first-child{grid-column:1/-1}.item{flex-wrap:wrap}.item .g{min-width:60%}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+[hidden]{display:none!important}
+</style></head>
+<body><div id="app"></div><div id="modal" hidden></div><div id="toast"></div>
+<script type="module">
+/* ===== 1. CONFIGURATION FIREBASE (à modifier) ===== */
+// Console Firebase > Paramètres du projet > Vos applications > Configuration SDK
+const cfg = {
+  apiKey: "VOTRE_API_KEY",
+  authDomain: "VOTRE_PROJET.firebaseapp.com",
+  projectId: "VOTRE_PROJET",
+  appId: "VOTRE_APP_ID"
+};
+// Compte de démonstration admin / admin (données fictives, locales, jamais envoyées à Firebase).
+// Mettez false avant la mise en production.
+const DEMO_ON = true;
+
+/* ===== 2. MODE DÉMO (admin / admin) ===== */
+const D=(()=>{
+// Mode démo : même API que Firestore, mais en mémoire. Aucune donnée n'est envoyée nulle part.
+const store={},subs=new Set();
+const notify=()=>subs.forEach(h=>h());
+const idOf=p=>p.split('/').pop();
+const collection=(_,...p)=>({kind:'col',path:p.join('/'),f:[]});
+const doc=(_,...p)=>({kind:'doc',path:p.join('/')});
+const where=(f,o,v)=>({f,v});
+const query=(c,...w)=>({...c,f:w});
+const list=c=>Object.keys(store).filter(k=>k.startsWith(c.path+'/')&&!k.slice(c.path.length+1).includes('/')&&c.f.every(w=>store[k][w.f]===w.v)).map(k=>({id:idOf(k),data:()=>({...store[k]})}));
+const onSnapshot=(r,cb)=>{const run=()=>r.kind==='doc'?cb({exists:()=>r.path in store,data:()=>store[r.path]&&{...store[r.path]}}):cb({docs:list(r)});const h=()=>setTimeout(run,0);subs.add(h);h();return()=>subs.delete(h)};
+const put=(r,d,o)=>{store[r.path]=o?.merge?{...store[r.path],...d}:{...d}};
+const addDoc=async(c,d)=>{const id='d'+Math.random().toString(36).slice(2,9);store[c.path+'/'+id]={...d};notify();return{id}};
+const setDoc=async(r,d,o)=>{put(r,d,o);notify()};
+const updateDoc=async(r,d)=>{put(r,d,{merge:1});notify()};
+const deleteDoc=async r=>{delete store[r.path];notify()};
+const writeBatch=()=>{const ops=[];return{set:(r,d,o)=>ops.push(()=>put(r,d,o)),delete:r=>ops.push(()=>delete store[r.path]),commit:async()=>{ops.forEach(f=>f());notify()}}};
+const reset=()=>{Object.keys(store).forEach(k=>delete store[k]);notify()};
+
+const SAMPLE=['Algorithmique','Base de données','Réseaux informatiques','Génie logiciel','Intelligence artificielle','Anglais technique'];
+const pic=(h,t)=>'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><rect width="300" height="300" fill="hsl(${h} 90% 96%)"/><rect x="24" y="24" width="252" height="252" rx="14" fill="#fff"/><text x="44" y="64" font-family="sans-serif" font-size="18" font-weight="700" fill="hsl(${h} 55% 35%)">${t}</text>${[100,128,156,184,212,240].map((y,i)=>`<rect x="44" y="${y}" width="${200-i*14}" height="7" rx="3.5" fill="hsl(${h} 60% 85%)"/>`).join('')}</svg>`);
+function seedExtras(){
+  const U='users/demo/',day=n=>new Date(Date.now()+n*864e5).toISOString().slice(0,10),now=Date.now();
+  const add=(p,d)=>store[U+p]=d;
+  [['algorithmique','Complexité algorithmique','Notation O(n), O(n log n), O(n²).\n• Meilleur, moyen et pire cas\n• Un tri fusion reste en O(n log n) dans tous les cas'],
+   ['algorithmique','Tri rapide','Choix du pivot, partition, récursivité.\nPire cas O(n²) si le pivot est toujours le minimum.'],
+   ['base-de-donnees','Normalisation','1FN : valeurs atomiques.\n2FN : pas de dépendance partielle.\n3FN : pas de dépendance transitive.'],
+   ['reseaux-informatiques','Modèle OSI','7 couches : physique, liaison, réseau, transport, session, présentation, application.']
+  ].forEach(([cid,title,body],i)=>add('notes/n'+i,{cid,title,body,ts:now-i*1e5}));
+  add('media/m0',{scope:'c:algorithmique',ref:'',data:pic(225,'Tableau : tri rapide'),desc:'Tableau du cours : déroulement du tri rapide pas à pas.',ts:now});
+  add('media/m1',{scope:'c:algorithmique',ref:'',data:pic(265,'Schéma : arbre binaire'),desc:'Schéma d\'un arbre binaire de recherche, avec les cas de parcours.',ts:now-1});
+  add('media/m2',{scope:'c:algorithmique',ref:'',data:pic(160,'Exemple de partition'),desc:'Exemple de partition autour du pivot, relevé en cours.',ts:now-2});
+  [['algorithmique','Série d\'exercices n°3',2],['base-de-donnees','TP : requêtes SQL avancées',4],['reseaux-informatiques','Exposé sur le routage',7],['anglais-technique','Rédiger un résumé d\'article',1]]
+   .forEach(([cid,title,d],i)=>add('tasks/t'+i,{cid,title,due:day(d),done:i===3,ts:now-i}));
+  add('pfe/main',{title:'Plateforme de suivi énergétique par IoT',theme:'Internet des objets et analyse de données',desc:'Conception d\'une application web qui collecte les mesures de capteurs et affiche la consommation en temps réel.'});
+  [['p1','Étude de l\'existant',null,0],['p1a','Analyse de 5 solutions concurrentes','p1',1],['p1b','Recueil des besoins','p1',1],
+   ['p2','Conception',null,0],['p2a','Schéma de la base de données','p2',1],['p2b','Maquettes des écrans','p2',0],
+   ['p3','Développement',null,0],['p3a','API de collecte des mesures','p3',1],['p3b','Tableau de bord','p3',0],['p3c','Alertes de surconsommation','p3',0],
+   ['p4','Rédaction du rapport',null,0]]
+   .forEach(([id,title,parent,done],i)=>add('ptasks/'+id,{title,parent,done:!!done,ts:now+i}));
+  add('media/s0',{scope:'pfe',ref:'p3a',data:pic(200,'Capture : test API'),desc:'Test de l\'API de collecte : requête envoyée et réponse obtenue.',ts:now});
+  add('media/s1',{scope:'pfe',ref:'p2a',data:pic(150,'Capture : schéma BDD'),desc:'Schéma de la base de données validé avec l\'encadrant.',ts:now-1});
+  notify();
+}
+
+return {collection,doc,where,query,onSnapshot,addDoc,setDoc,updateDoc,deleteDoc,writeBatch,reset,SAMPLE,seedExtras}})();
+/* ===== 3. APPLICATION ===== */
+let F=null,auth,db;
+const LIVE=!/^VOTRE_/.test(cfg.apiKey);
+try{if(!LIVE)throw 'demo';const u=m=>`https://www.gstatic.com/firebasejs/10.14.1/firebase-${m}.js`;
+  const [a,b,c]=await Promise.all([import(u('app')),import(u('auth')),import(u('firestore'))]);
+  F={...b,...c};const app=a.initializeApp(cfg);auth=F.getAuth(app);db=F.getFirestore(app)}
+catch(e){if(LIVE)console.warn('Firebase indisponible',e)}
+let X=F||D;
+const [collection,doc,addDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch]=['collection','doc','addDoc','setDoc','updateDoc','deleteDoc','onSnapshot','query','where','writeBatch'].map(n=>(...a)=>X[n](...a));
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const hue=s=>[...norm(s)].reduce((a,c)=>(a*31+c.charCodeAt(0))&0xffff,7)%360;
+const slug=s=>norm(s).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'c'+hue(s);
+const S={user:null,ready:false,profile:{},courses:[],tasks:[],ptasks:[],pfe:null,notes:[],media:[],view:'home',cid:null,tab:'notes',found:null,slots:{},manual:false,demo:false,busy:'',w:{},subs:[]};
+const col=p=>collection(db,'users',S.user.uid,p), dref=(p,id)=>doc(db,'users',S.user.uid,p,id);
+let pend=null,stream=null;
+
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2400)}
+function openModal(h){$('#modal').innerHTML=`<div class="sheet">${h}</div>`;$('#modal').hidden=false}
+function closeModal(){stream?.getTracks().forEach(t=>t.stop());stream=null;$('#modal').hidden=true;const p=pend;pend=null;p?.(null)}
+const sub=u=>S.subs.push(u);
+function watch(k,q){S.w[k]?.();S[k]=[];S.w[k]=q?onSnapshot(q,s=>{S[k]=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.ts||0)-(a.ts||0));render()}):null}
+
+/* ---------- Auth & données ---------- */
+function start(u){
+  S.subs.forEach(f=>f());S.subs=[];Object.keys(S.w).forEach(k=>watch(k,null));
+  S.user=u;S.ready=false;S.profile={};S.view='home';S.cid=null;S.found=null;S.slots={};S.manual=false;
+  if(u){const uid=u.uid,c=p=>collection(db,'users',uid,p),list=(p,k)=>sub(onSnapshot(c(p),s=>{S[k]=s.docs.map(d=>({id:d.id,...d.data()}));render()}));
+    sub(onSnapshot(doc(db,'users',uid),d=>{S.profile=d.data()||{};S.ready=true;render()},err=>{console.error(err);toast('Accès refusé : vérifiez les règles Firestore')}));
+    list('courses','courses');list('tasks','tasks');list('ptasks','ptasks');
+    sub(onSnapshot(doc(db,'users',uid,'pfe','main'),d=>{S.pfe=d.exists()?d.data():null;render()}));
+  }
+  render();
+}
+F?F.onAuthStateChanged(auth,u=>{if(!S.demo)start(u)}):start(null);
+
+/* ---------- Utilitaires : formulaires, caméra, images ---------- */
+const ask=(title,fields,ok='Enregistrer',pre='')=>new Promise(r=>{pend=r;
+  openModal(`<form id="f"><h3>${title}</h3>${pre}${fields.map(f=>`<label>${f.l}${f.t==='area'?`<textarea name="${f.k}" rows="${f.rows||8}" placeholder="${esc(f.ph||'')}">${esc(f.v)}</textarea>`:f.t==='select'?`<select name="${f.k}">${f.o.map(o=>`<option value="${esc(o[0])}" ${o[0]==f.v?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`:`<input name="${f.k}" type="${f.t||'text'}" value="${esc(f.v)}" ${f.req?'required':''}>`}</label>`).join('')}<div class="row"><button class="btn">${ok}</button><button type="button" class="btn ghost" data-a="close">Annuler</button></div></form>`)});
+const shrink=(src,w=1100)=>new Promise(r=>{const i=new Image();i.onload=()=>{const k=Math.min(1,w/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*k;c.height=i.height*k;c.getContext('2d').drawImage(i,0,0,c.width,c.height);r(c.toDataURL('image/jpeg',.65))};i.src=src});
+const readFile=f=>new Promise(r=>{const x=new FileReader();x.onload=()=>r(x.result);x.readAsDataURL(f)});
+const snap=()=>new Promise(async r=>{pend=r;
+  openModal(`<h3>Prendre une photo</h3><video id="cam" autoplay playsinline muted></video><div class="row"><button class="btn" data-a="shoot">Capturer</button><label class="btn ghost" style="margin:0">Appareil photo du téléphone<input type="file" accept="image/*" capture="environment" class="gal" hidden></label><label class="btn ghost" style="margin:0">Galerie<input type="file" accept="image/*" class="gal" hidden></label><button class="btn ghost" data-a="close">Fermer</button></div>`);
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});$('#cam').srcObject=stream}catch{toast('Caméra intégrée indisponible : utilisez l\'appareil photo du téléphone ou la galerie')}});
+const done=v=>{const p=pend;pend=null;$('#modal').hidden=true;stream?.getTracks().forEach(t=>t.stop());stream=null;p?.(v)};
+async function addPhoto(scope,ref){const img=await snap();if(!img)return;
+  const v=await ask('Description de la capture',[{k:'desc',l:'Que montre cette capture ?',t:'area',v:'',rows:4,ph:'Ex. : schéma du tri rapide, correction de l\'exercice 3'}],'Enregistrer la capture',`<img class="pre" src="${img}" alt="Aperçu">`);
+  if(!v)return;await addDoc(col('media'),{scope,ref,data:img,desc:(v.desc||'').trim(),ts:Date.now()});toast('Capture ajoutée')}
+const load=src=>new Promise((ok,ko)=>{if(document.querySelector(`script[src="${src}"]`))return ok();const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=ko;document.head.append(s)});
+
+/* ---------- Reconnaissance des matières ---------- */
+const TESS='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',XLS='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+const NOISE=/^(lun|mar|mer|jeu|ven|sam|dim)[a-z]*\.?$|^(mon|tue|wed|thu|fri|sat|sun)[a-z]*$|^[\d\s:h\-–—.\/]+$/i;
+const HEAD=/emploi du temps|ann[ée]e|cycles?|code\s*:|version|date d|ismagi|engineering|school|institut|pause|d[ée]jeuner|ing[ée]nieurs|horaires?/i;
+const isCaps=s=>{const l=s.replace(/[^A-Za-zÀ-ÿ]/g,'');return l.length>=3&&l===l.toUpperCase()&&(s.split(' ').length>=2||l.length>=6)};
+const isRoom=s=>/^(amphi?|amhi|salle|room|bloc|lab)\b/i.test(s);
+const sim=(a,b)=>{const m=a.length,n=b.length;if(!m||!n)return 0;let p=[...Array(n+1).keys()];for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c}return 1-p[n]/Math.max(m,n)};
+const tidy=s=>s.replace(/\s+/g,' ').replace(/([a-zà-ÿ])\.\s+(?=[A-ZÀ-Ý])/g,'$1, ').replace(/\s*-\s*\([^)]*\)\s*$/,'').replace(/^[\s\-–•|]+|[\s\-–|]+$/g,'');
+const valid=s=>s.length>=4&&s.length<=90&&!NOISE.test(s)&&/[a-zà-ÿ]{3}/i.test(s);
+const capsRatio=s=>{const l=s.replace(/[^A-Za-zÀ-ÿ]/g,'');return l.length?[...l].filter(c=>c===c.toUpperCase()).length/l.length:0};
+const isTeacher=s=>capsRatio(s)>=.8&&s.replace(/[^A-Za-zÀ-ÿ]/g,'').length>=4;
+/* Une case = intitulé (minuscules) + enseignant (MAJUSCULES) + salle. On ne garde que l'intitulé. */
+function extract(chunks){const out=new Map();let buf=[],skip=false;
+  const flush=()=>{const s=tidy(buf.join(' '));buf=[];
+    if(valid(s)){const k=norm(s);if(![...out.keys()].some(x=>sim(x,k)>=.82))out.set(k,s)}};
+  for(const ch of chunks){
+    for(const raw of String(ch).split('\n')){
+      const l=raw.replace(/[|_]+/g,' ').replace(/\s+/g,' ').trim();
+      if(!l){flush();skip=false}
+      else if(isCaps(l)||isRoom(l)){flush();skip=false}
+      else if(HEAD.test(l)){flush();skip=true}
+      else if(!skip)buf.push(l)}
+    flush();skip=false}
+  return [...out.values()]}
+/* ---- Vision par ordinateur (sans serveur) ----
+   1 redimensionnement  2 redressement (deskew)  3 détection de la grille par projections
+   4 zone utile = tableau sans la ligne des horaires ni la colonne des jours, sans cases colorées (pauses)
+   5 binarisation d'Otsu de chaque case  6 OCR (réseau LSTM) en gardant les lignes AVANT le premier nom d'enseignant
+   7 vote : les variantes d'une même matière sont regroupées, la lecture la plus fiable gagne */
+const dark=(d,i)=>d[i]+d[i+1]+d[i+2]<400;
+function skewAngle(cv){const w=600,h=Math.round(cv.height*w/cv.width),t=document.createElement('canvas');t.width=w;t.height=h;const g=t.getContext('2d',{willReadFrequently:true});g.drawImage(cv,0,0,w,h);
+  const d=g.getImageData(0,0,w,h).data,p=[],mx=w*.03,my=h*.03;
+  for(let y=my|0;y<h-my;y++)for(let x=mx|0;x<w-mx;x++)if(dark(d,(y*w+x)*4))p.push(x-w/2,y-h/2);
+  let best=0,bv=-1;for(let a=-5;a<=5;a+=.25){const r=a*Math.PI/180,cs=Math.cos(r),sn=Math.sin(r),bin=new Float32Array(h*2+4);
+    for(let i=0;i<p.length;i+=2)bin[Math.round(p[i+1]*cs-p[i]*sn+h)]++;let v=0;for(const b of bin)v+=b*b;if(v>bv){bv=v;best=a}}return best}
+function otsuCell(cv,[x,y,w,h]){const P=24,t=document.createElement('canvas');t.width=w+2*P;t.height=h+2*P;const g=t.getContext('2d',{willReadFrequently:true});
+  g.fillStyle='#fff';g.fillRect(0,0,t.width,t.height);g.drawImage(cv,x,y,w,h,P,P,w,h);
+  const im=g.getImageData(0,0,t.width,t.height),d=im.data,hist=new Uint32Array(256),n=d.length/4;
+  for(let i=0;i<d.length;i+=4){const v=(d[i]*.299+d[i+1]*.587+d[i+2]*.114)|0;d[i]=v;hist[v]++}
+  let sum=0;for(let i=0;i<256;i++)sum+=i*hist[i];let sb=0,wb=0,mx=0,th=128;
+  for(let i=0;i<256;i++){wb+=hist[i];if(!wb)continue;const wf=n-wb;if(!wf)break;sb+=i*hist[i];const m=sb/wb-(sum-sb)/wf,v=wb*wf*m*m;if(v>mx){mx=v;th=i}}
+  for(let i=0;i<d.length;i+=4){d[i]=d[i+1]=d[i+2]=d[i]>th?255:0}g.putImageData(im,0,0);return t}
+async function ocrGrid(file){
+  await load(TESS);
+  const bmp=await createImageBitmap(file),K=Math.min(3,2400/bmp.width),W=Math.round(bmp.width*K),H=Math.round(bmp.height*K);
+  let cv=document.createElement('canvas');cv.width=W;cv.height=H;let g=cv.getContext('2d',{willReadFrequently:true});g.fillStyle='#fff';g.fillRect(0,0,W,H);g.drawImage(bmp,0,0,W,H);
+  const ang=skewAngle(cv);
+  if(Math.abs(ang)>.2){const c2=document.createElement('canvas');c2.width=W;c2.height=H;g=c2.getContext('2d',{willReadFrequently:true});g.fillStyle='#fff';g.fillRect(0,0,W,H);g.translate(W/2,H/2);g.rotate(-ang*Math.PI/180);g.drawImage(cv,-W/2,-H/2);cv=c2}
+  const px=cv.getContext('2d').getImageData(0,0,W,H).data,row=new Uint32Array(H),cl=new Uint32Array(W),mx=Math.round(W*.02),my=Math.round(H*.02);
+  for(let y=my;y<H-my;y++)for(let x=mx;x<W-mx;x++)if(dark(px,(y*W+x)*4)){row[y]++;cl[x]++}
+  const lines=a=>{let m=0;a.forEach(v=>{if(v>m)m=v});const r=[];let s=-1;a.forEach((v,i)=>{if(v>m*.6){if(s<0)s=i}else if(s>=0){r.push((s+i-1)>>1);s=-1}});return r};
+  const ys=lines(row),xs=lines(cl),cells=[];
+  for(let j=1;j<ys.length-1;j++)for(let i=1;i<xs.length-1;i++){            // j,i = 1 : on exclut la ligne des horaires et la colonne des jours
+    const x0=xs[i]+6,x1=xs[i+1]-6,y0=ys[j]+6,y1=ys[j+1]-6;if(x1-x0<W*.07||y1-y0<H*.03)continue;
+    let w=0,n=0,ink=0;for(let y=y0;y<y1;y+=3)for(let x=x0;x<x1;x+=3){const k=(y*W+x)*4;n++;if(px[k]>215&&px[k+1]>215&&px[k+2]>215)w++;if(px[k]+px[k+1]+px[k+2]<360)ink++}
+    if(w/n>.7&&ink/n>.004)cells.push([x0,y0,x1-x0,y1-y0])}
+  const wk=await Tesseract.createWorker('fra'),items=[];
+  if(xs.length<3||ys.length<3||!cells.length){toast('Tableau non détecté : lecture globale (moins fiable)');const t=(await wk.recognize(cv)).data.text;await wk.terminate();return [t]}
+  await wk.setParameters({tessedit_pageseg_mode:'6'});
+  for(const [i,c] of cells.entries()){S.busy=`Lecture de l'emploi du temps… ${i+1}/${cells.length}`;render();
+    const {data}=await wk.recognize(otsuCell(cv,c)),ls=(data.lines?.length?data.lines.map(l=>({t:l.text.trim(),c:l.confidence})):data.text.split('\n').map(t=>({t:t.trim(),c:data.confidence}))).filter(l=>l.t);
+    const keep=[];for(const l of ls){if(isTeacher(l.t)||isRoom(l.t))break;if(l.c>=35&&!HEAD.test(l.t))keep.push(l)}   // l'intitulé est toujours AU-DESSUS du nom de l'enseignant
+    const s=tidy(keep.map(l=>l.t).join(' '));if(valid(s))items.push({s,c:keep.reduce((a,l)=>a+l.c,0)/keep.length})}
+  await wk.terminate();
+  if(bmp.width<900||items.reduce((a,x)=>a+x.c,0)/(items.length||1)<70)toast('Image petite ou floue : vérifiez bien les noms détectés');
+  const groups=[];items.forEach(it=>{const k=norm(it.s),g=groups.find(g=>sim(g.k,k)>=.8);g?g.m.push(it):groups.push({k,m:[it]})});
+  return groups.map(g=>g.m.sort((a,b)=>b.c-a.c)[0].s)}
+async function readSchedule(file){
+  const n=file.name.toLowerCase(),csv=/\.csv$/.test(n);
+  if(file.type.startsWith('image/'))return ocrGrid(file);
+  if(/\.(xlsx|xls|csv)$/.test(n)){await load(XLS);const wb=XLSX.read(csv?await file.text():await file.arrayBuffer(),{type:csv?'string':'array'});
+    return wb.SheetNames.flatMap(s=>XLSX.utils.sheet_to_json(wb.Sheets[s],{header:1,defval:''}).flat()).map(String)}
+  if(/\.txt$/.test(n))return [await file.text()];
+  throw new Error('Format non pris en charge (image, XLSX, CSV, TXT).')}
+async function saveSchedule(){
+  const b=writeBatch(db);
+  S.found.forEach(name=>{const d={name,hue:hue(name)},sl=S.slots[norm(name)];if(sl)d.slots=sl;b.set(dref('courses',slug(name)),d,{merge:true})});
+  b.set(doc(db,'users',S.user.uid),{hasSchedule:true,scheduleName:S.scheduleName||''},{merge:true});
+  await b.commit();if(S.demo)D.seedExtras();S.found=null;S.slots={};S.manual=false;toast('Rubriques créées')}
+
+/* ---------- PFE ---------- */
+const leaves=()=>S.ptasks.filter(x=>!S.ptasks.some(y=>y.parent===x.id));
+const pct=()=>{const l=leaves();return l.length?Math.round(l.filter(x=>x.done).length/l.length*100):0};
+const isDone=t=>{const k=S.ptasks.filter(y=>y.parent===t.id);return k.length?k.every(isDone):!!t.done};
+
+/* ---------- Vues ---------- */
+const tint=h=>`background:hsl(${h} 95% 93%);color:hsl(${h} 55% 28%)`;
+const course=id=>S.courses.find(c=>c.id===id);
+const IC={home:'<svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>',tasks:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',pfe:'<svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5zM6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>',out:'<svg viewBox="0 0 24 24"><path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9"/></svg>'};
+const nav=(v,ic,l)=>`<button class="nav ${S.view===v?'on':''}" data-a="go" data-v="${v}">${ic} ${l}</button>`;
+function login(){return `<div class="center"><form class="card" id="login"><h1>Kampus</h1><p style="color:var(--mute);margin:6px 0 22px">Connectez-vous avec le compte créé pour vous.</p>
+<label>Identifiant ou e-mail<input name="e" type="text" required autocomplete="username"></label><label>Mot de passe<input name="p" type="password" required autocomplete="current-password"></label>
+<button class="btn" style="width:100%">Se connecter</button><div class="err" id="err"></div>${DEMO_ON?'<p style="color:var(--mute);font-size:.85rem;margin-top:6px">Démo : identifiant <b>admin</b>, mot de passe <b>admin</b></p>':''}</form></div>`}
+const DAYS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+const slotTxt=a=>(a||[]).map(x=>[x.d,x.s&&x.e?x.s+'–'+x.e:x.s||x.e].filter(Boolean).join(' ')).filter(Boolean).join(' · ');
+function upload(){const f=S.found;
+const man=`<form class="card" id="man" style="margin-top:14px"><h3>Ajouter une matière</h3><label>Nom de la matière <span style="color:#E03131">*</span><input name="n" required maxlength="80" placeholder="Ex. : Algorithmique"></label>
+<div class="two"><label>Jour <small style="font-weight:400;color:var(--mute)">(facultatif)</small><select name="d"><option value="">Non précisé</option>${DAYS.map(d=>`<option>${d}</option>`).join('')}</select></label><label>Début <small style="font-weight:400;color:var(--mute)">(facultatif)</small><input name="s" type="time"></label><label>Fin <small style="font-weight:400;color:var(--mute)">(facultatif)</small><input name="e" type="time"></label></div>
+<button class="btn ghost">Ajouter à la liste</button></form>`;
+return `<div class="center"><div style="width:min(640px,100%)"><h1>${f?'Mes rubriques':'Votre emploi du temps'}</h1>
+<p style="color:var(--mute);margin:8px 0 22px">${f?(S.manual?'Ajoutez vos matières une par une, avec leurs horaires si vous le souhaitez. Chaque matière devient une rubrique.':'La reconnaissance de texte peut se tromper : corrigez la liste ou ajoutez des matières manuellement avant de valider.'):'Importez une photo, un fichier Excel, CSV ou texte, ou saisissez vos matières manuellement. Chaque matière devient une rubrique unique.'}</p>
+${f?`<div class="card"><h3>${f.length} matière(s)</h3>
+<div class="chips">${f.map((x,i)=>{const t=slotTxt(S.slots[norm(x)]);return `<span class="chip">${esc(x)}${t?` <small>${esc(t)}</small>`:''}<button data-a="rm" data-i="${i}" aria-label="Retirer">×</button></span>`}).join('')||'<span style="color:var(--mute)">Aucune matière pour le moment.</span>'}</div>
+<div class="row"><button class="btn" data-a="saveS" ${f.length?'':'disabled'}>Créer mes rubriques</button><button class="btn ghost" data-a="cancelS">${S.manual?'Retour':'Changer de fichier'}</button></div></div>${man}`
+:`<label class="drop" for="sch">${S.busy?`<b>${esc(S.busy)}</b>`:'<b>Glissez ou touchez pour choisir un fichier</b>'}<input id="sch" type="file" accept="image/*,.xlsx,.xls,.csv,.txt" hidden></label>
+<div class="row"><button class="btn ghost" data-a="manualS">Saisir mon emploi du temps manuellement</button>${S.demo?'<button class="btn ghost sm" data-a="sample">Utiliser un exemple d\'emploi du temps</button>':''}</div>`}
+${S.courses.length?'<div class="row"><button class="btn ghost sm" data-a="skipS">Annuler</button></div>':''}</div></div>`}
+function addManual(v){const n=v.n.trim().replace(/\s+/g,' ');if(!n)return;const k=norm(n);
+  if(!S.found.some(x=>norm(x)===k))S.found.push(n);
+  if(v.d||v.s||v.e)(S.slots[k]=S.slots[k]||[]).push({d:v.d||'',s:v.s||'',e:v.e||''});
+  render();$('#man input')?.focus()}
+function home(){const open=S.tasks.filter(t=>!t.done).length;
+  return `<h1>Bonjour</h1><p style="color:var(--mute)">${S.courses.length} rubriques actives</p>
+<div class="stats"><div class="card stat"><b>${S.courses.length}</b><span>Matières</span></div><div class="card stat"><b>${open}</b><span>Travaux à faire</span></div>
+<div class="card stat" style="cursor:pointer" data-a="go" data-v="pfe"><b>${pct()}%</b><span>Progression PFE</span><div class="bar" style="margin-top:8px"><i style="width:${pct()}%"></i></div></div></div>
+<h2>Mes rubriques</h2><div class="grid">${S.courses.map(c=>`<button class="tile" style="${tint(c.hue)}" data-a="open" data-id="${c.id}"><b>${esc(c.name)}</b><span><small style="display:block">${(n=>n+(n>1?' travaux en cours':' travail en cours'))(S.tasks.filter(t=>t.cid===c.id&&!t.done).length)}</small>${c.slots?.length?`<small style="display:block">${esc(slotTxt(c.slots))}</small>`:''}</span></button>`).join('')}</div>
+<div class="row"><button class="btn sm" data-a="newCourse">Ajouter une rubrique</button><button class="btn ghost sm" data-a="newSched">Mettre à jour l'emploi du temps</button></div>`}
+function coursePage(){const c=course(S.cid);if(!c)return '<div class="empty">Rubrique introuvable</div>';
+  const t=S.tasks.filter(x=>x.cid===c.id);
+  return `<button class="btn ghost sm" data-a="go" data-v="home">Retour</button><div class="row sp" style="margin-top:6px"><h1>${esc(c.name)}</h1><button class="btn del sm" data-a="delc" data-id="${c.id}">Supprimer la rubrique</button></div>${c.slots?.length?`<p style="color:var(--mute)">${esc(slotTxt(c.slots))}</p>`:''}
+<div class="tabs">${[['notes','Notes'],['photos','Captures'],['tasks','Travaux']].map(([k,l])=>`<button class="${S.tab===k?'on':''}" data-a="tab" data-t="${k}">${l}</button>`).join('')}</div>
+${S.tab==='notes'?`<button class="btn" data-a="note">+ Nouvelle note</button><div style="margin-top:16px">${S.notes.map(n=>`<div class="card note"><div class="row sp" style="margin:0"><b>${esc(n.title)}</b><span class="row" style="margin:0"><button class="btn ghost sm" data-a="note" data-id="${n.id}">Modifier</button><button class="btn del sm" data-a="del" data-p="notes" data-id="${n.id}">Suppr.</button></span></div><p>${esc(n.body)}</p></div>`).join('')||'<div class="empty">Aucune note. Ajoutez les notions essentielles du cours.</div>'}</div>`
+:S.tab==='photos'?`<button class="btn" data-a="photo" data-s="c:${c.id}">Ajouter une capture</button><div class="caps">${S.media.map(capCard).join('')}</div>${S.media.length?'':'<div class="empty">Aucune capture. Photographiez votre tableau ou votre cahier, puis décrivez-la.</div>'}`
+:`<button class="btn" data-a="task" data-c="${c.id}">+ Travail à faire</button><div class="card" style="margin-top:16px">${t.map(taskRow).join('')||'<div class="empty">Rien à rendre.</div>'}</div>`}`}
+const capCard=m=>`<figure class="cap"><img src="${m.data}" data-a="view" data-id="${m.id}" alt="${esc(m.desc||'Capture')}"><div class="cb"><p class="${m.desc?'':'none'}">${esc(m.desc||'Aucune description')}</p><div class="row"><button class="btn ghost sm" data-a="editcap" data-id="${m.id}">Modifier</button><button class="btn del sm" data-a="delm" data-id="${m.id}">Supprimer</button></div></div></figure>`;
+const taskRow=t=>`<div class="item ${t.done?'done':''}"><input type="checkbox" data-a="tdone" data-id="${t.id}" ${t.done?'checked':''}><div class="g"><div class="t">${esc(t.title)}</div><small>${esc(course(t.cid)?.name||'')}${t.due?' · pour le '+new Date(t.due).toLocaleDateString('fr-FR'):''}</small></div><button class="btn del sm" data-a="del" data-p="tasks" data-id="${t.id}">×</button></div>`;
+function tasksPage(){const l=[...S.tasks].sort((a,b)=>(a.done-b.done)||(a.due||'9').localeCompare(b.due||'9'));
+  return `<h1>Travaux à faire</h1><div class="row"><button class="btn" data-a="task">+ Ajouter un travail</button></div><div class="card" style="margin-top:16px">${l.map(taskRow).join('')||'<div class="empty">Aucun travail. Profitez-en !</div>'}</div>`}
+function pfePage(){const p=S.pfe;
+  if(!p)return `<h1>Mon PFE</h1><div class="card" style="margin-top:16px"><p>Aucun PFE enregistré.</p><div class="row"><button class="btn" data-a="pfeEdit">Ajouter mon PFE</button></div></div>`;
+  const mains=S.ptasks.filter(t=>!t.parent).sort((a,b)=>a.ts-b.ts);
+  return `<div class="row sp"><h1>${esc(p.title)}</h1><button class="btn ghost sm" data-a="pfeEdit">Modifier</button></div>
+<p style="color:var(--mute)">Thème : ${esc(p.theme||'—')}</p><p>${esc(p.desc||'')}</p>
+<div class="card" style="margin:18px 0"><div class="row sp" style="margin:0 0 8px"><b>Avancement</b><b>${pct()}%</b></div><div class="bar"><i style="width:${pct()}%"></i></div></div>
+<div class="row sp"><h2 style="margin:0">Tâches</h2><button class="btn sm" data-a="ptask">+ Tâche principale</button></div>
+<div class="card" style="margin-top:12px">${mains.map(m=>{const k=S.ptasks.filter(x=>x.parent===m.id).sort((a,b)=>a.ts-b.ts);
+ return pRow(m,!k.length,false)+k.map(x=>pRow(x,true,true)).join('')+`<div class="item sub"><button class="btn ghost sm" data-a="ptask" data-p="${m.id}">+ Tâche annexe</button></div>`}).join('')||'<div class="empty">Ajoutez votre première tâche principale.</div>'}</div>`}
+const pRow=(t,leaf,sub)=>`<div class="item ${sub?'sub':''} ${isDone(t)?'done':''}"><input type="checkbox" data-a="pdone" data-id="${t.id}" ${isDone(t)?'checked':''} ${leaf?'':'disabled'}><div class="g"><div class="t" ${sub?'':'style="font-weight:700"'}>${esc(t.title)}</div></div><button class="btn ghost sm" data-a="pshots" data-id="${t.id}">Captures</button><button class="btn del sm" data-a="pdel" data-id="${t.id}">×</button></div>`;
+
+function render(){const a=$('#app');
+  if(!S.user){a.innerHTML=login();return}
+  if(!S.ready){a.innerHTML='<div class="center"><b>Chargement…</b></div>';return}
+  if(!S.profile.hasSchedule||S.found||S.busy){a.innerHTML=upload();return}
+  const body=S.view==='course'?coursePage():S.view==='tasks'?tasksPage():S.view==='pfe'?pfePage():home();
+  a.innerHTML=`<div class="shell"><aside><div class="logo">Kampus</div>${nav('home',IC.home,'Accueil')}${nav('tasks',IC.tasks,'Travaux')}${nav('pfe',IC.pfe,'Mon PFE')}
+<div class="side-t">Rubriques</div>${S.courses.map(c=>`<button class="nav ${S.cid===c.id&&S.view==='course'?'on':''}" data-a="open" data-id="${c.id}"><span class="dot" style="background:hsl(${c.hue} 70% 55%)"></span>${esc(c.name)}</button>`).join('')}
+<div class="side-t"><button class="nav" data-a="out">${IC.out} Se déconnecter</button></div></aside><main>${body}</main>
+<nav class="bottom">${nav('home',IC.home,'Accueil')}${nav('tasks',IC.tasks,'Travaux')}${nav('pfe',IC.pfe,'PFE')}<button class="nav" data-a="out">${IC.out} Quitter</button></nav></div>`}
+
+/* ---------- Événements ---------- */
+const go=v=>{S.view=v;S.cid=null;if(v==='pfe')watch('media',query(col('media'),where('scope','==','pfe')));else watch('media',null);watch('notes',null);render();scrollTo(0,0)};
+const A={
+ go:e=>go(e.v),out:()=>{if(S.demo){S.demo=false;D.reset();X=F||D;start(null)}else F.signOut(auth)},sample:()=>{S.found=[...D.SAMPLE];S.manual=false;S.slots={};S.scheduleName='exemple.png';render()},close:closeModal,
+ open:e=>{S.view='course';S.cid=e.id;S.tab='notes';watch('notes',query(col('notes'),where('cid','==',e.id)));watch('media',query(col('media'),where('scope','==','c:'+e.id)));render()},
+ tab:e=>{S.tab=e.t;render()},
+ shoot:()=>{const v=$('#cam');if(!v?.videoWidth)return toast('Caméra non prête');const c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);shrink(c.toDataURL()).then(done)},
+ photo:e=>addPhoto(e.s,''),
+ view:e=>{const m=S.media.find(x=>x.id===e.id);openModal(`<img class="big" src="${m.data}" alt=""><p style="margin-top:12px;white-space:pre-wrap">${esc(m.desc||'Aucune description')}</p><div class="row"><button class="btn ghost" data-a="editcap" data-id="${m.id}">Modifier la description</button><button class="btn del" data-a="delm" data-id="${m.id}">Supprimer</button><button class="btn ghost" data-a="close">Fermer</button></div>`)},
+ delm:async e=>{if(!confirm('Supprimer cette capture ?'))return;await deleteDoc(dref('media',e.id));closeModal()},
+ editcap:async e=>{const m=S.media.find(x=>x.id===e.id);if(!m)return;const v=await ask('Description de la capture',[{k:'desc',l:'Description',t:'area',v:m.desc,rows:4}],'Enregistrer',`<img class="pre" src="${m.data}" alt="">`);if(v)await updateDoc(dref('media',e.id),{desc:(v.desc||'').trim()})},
+ delc:async e=>{if(!confirm('Supprimer cette rubrique avec ses notes, captures et travaux ?'))return;const b=writeBatch(db);b.delete(dref('courses',e.id));S.notes.forEach(n=>b.delete(dref('notes',n.id)));S.media.forEach(m=>b.delete(dref('media',m.id)));S.tasks.filter(t=>t.cid===e.id).forEach(t=>b.delete(dref('tasks',t.id)));await b.commit();go('home')},
+ manualS:()=>{S.found=[];S.slots={};S.manual=true;render()},
+ newCourse:async()=>{const v=await ask('Nouvelle rubrique',[{k:'n',l:'Nom de la matière *',v:'',req:1},{k:'d',l:'Jour (facultatif)',t:'select',v:'',o:[['','Non précisé'],...DAYS.map(d=>[d,d])]},{k:'s',l:'Début (facultatif)',t:'time',v:''},{k:'e',l:'Fin (facultatif)',t:'time',v:''}],'Créer');
+  if(!v)return;const n=v.n.trim().replace(/\s+/g,' '),id=slug(n),slots=[...(course(id)?.slots||[])];if(v.d||v.s||v.e)slots.push({d:v.d||'',s:v.s||'',e:v.e||''});
+  await setDoc(dref('courses',id),{name:n,hue:hue(n),slots},{merge:true});toast('Rubrique créée')},
+ del:async e=>{if(confirm('Supprimer ?'))await deleteDoc(dref(e.p,e.id))},
+ note:async e=>{const n=S.notes.find(x=>x.id===e.id)||{};const v=await ask(n.id?'Modifier la note':'Nouvelle note',[{k:'title',l:'Titre',v:n.title,req:1},{k:'body',l:'Notion essentielle',t:'area',v:n.body}]);if(!v)return;
+  n.id?await updateDoc(dref('notes',n.id),v):await addDoc(col('notes'),{...v,cid:S.cid,ts:Date.now()})},
+ task:async e=>{const v=await ask('Travail à faire',[{k:'title',l:'Intitulé',v:'',req:1},{k:'cid',l:'Matière',t:'select',v:e.c||S.cid||S.courses[0]?.id,o:S.courses.map(c=>[c.id,c.name])},{k:'due',l:'Pour le',t:'date',v:''}],'Ajouter');if(v)await addDoc(col('tasks'),{...v,done:false,ts:Date.now()})},
+ tdone:e=>updateDoc(dref('tasks',e.id),{done:!S.tasks.find(t=>t.id===e.id).done}),
+ pfeEdit:async()=>{const p=S.pfe||{};const v=await ask('Mon PFE',[{k:'title',l:'Titre du PFE',v:p.title,req:1},{k:'theme',l:'Thème',v:p.theme},{k:'desc',l:'Description',t:'area',v:p.desc}]);if(v)await setDoc(dref('pfe','main'),v,{merge:true})},
+ ptask:async e=>{const v=await ask(e.p?'Tâche annexe':'Tâche principale',[{k:'title',l:'Intitulé',v:'',req:1}],'Ajouter');if(v)await addDoc(col('ptasks'),{title:v.title,parent:e.p||null,done:false,ts:Date.now()})},
+ pdone:e=>updateDoc(dref('ptasks',e.id),{done:!S.ptasks.find(t=>t.id===e.id).done}),
+ pdel:async e=>{if(!confirm('Supprimer cette tâche et ses annexes ?'))return;const b=writeBatch(db);b.delete(dref('ptasks',e.id));S.ptasks.filter(t=>t.parent===e.id).forEach(t=>b.delete(dref('ptasks',t.id)));S.media.filter(m=>m.ref===e.id).forEach(m=>b.delete(dref('media',m.id)));await b.commit()},
+ pshots:e=>{const t=S.ptasks.find(x=>x.id===e.id),m=S.media.filter(x=>x.ref===e.id);
+  openModal(`<h3>${esc(t.title)}</h3><div class="caps" style="grid-template-columns:1fr">${m.map(capCard).join('')||'<div class="empty">Aucune capture.</div>'}</div><div class="row"><button class="btn" data-a="shot" data-id="${e.id}">Ajouter une capture</button><button class="btn ghost" data-a="close">Fermer</button></div>`)},
+ shot:async e=>{await addPhoto('pfe',e.id);A.pshots(e)},
+ rm:e=>{const x=S.found.splice(+e.i,1)[0];delete S.slots[norm(x)];render()},
+ addf:async()=>{const v=await ask('Ajouter une matière',[{k:'n',l:'Nom',v:'',req:1}],'Ajouter');if(v&&!S.found.some(x=>norm(x)===norm(v.n)))S.found.push(v.n.trim());render()},
+ saveS:()=>saveSchedule(),cancelS:()=>{S.found=null;S.slots={};S.manual=false;render()},
+ newSched:async()=>{await setDoc(doc(db,'users',S.user.uid),{hasSchedule:false},{merge:true})},
+ skipS:async()=>{await setDoc(doc(db,'users',S.user.uid),{hasSchedule:true},{merge:true})}
+};
+document.addEventListener('click',e=>{const t=e.target.closest('[data-a]');if(t&&A[t.dataset.a]){if(t.type==='checkbox')e.stopPropagation();A[t.dataset.a](t.dataset)}else if(e.target.id==='modal')closeModal()});
+document.addEventListener('submit',async e=>{e.preventDefault();
+  if(e.target.id==='f'){const v=Object.fromEntries(new FormData(e.target));const p=pend;pend=null;$('#modal').hidden=true;p?.(v)}
+  if(e.target.id==='man'){addManual(Object.fromEntries(new FormData(e.target)));return}
+  if(e.target.id==='login'){const f=new FormData(e.target);const em=f.get('e').trim();
+    if(DEMO_ON&&em==='admin'&&f.get('p')==='admin'){S.demo=true;X=D;start({uid:'demo'});return}
+    if(!F){$('#err').textContent='Firebase non configuré. Utilisez admin / admin pour la démo.';return}
+    if(!em.includes('@')){$('#err').textContent='Saisissez l\'adresse e-mail de votre compte.';return}
+    try{await F.signInWithEmailAndPassword(auth,em,f.get('p'))}catch{$('#err').textContent='E-mail ou mot de passe incorrect.'}}});
+document.addEventListener('change',async e=>{
+  if(e.target.classList.contains('gal')){const f=e.target.files[0];if(f)done(await shrink(await readFile(f)))}
+  if(e.target.id==='sch'){const f=e.target.files[0];if(!f)return;S.scheduleName=f.name;S.busy='Analyse en cours… (une photo peut prendre 20 s)';render();
+    try{S.found=extract(await readSchedule(f));if(!S.found.length)toast('Aucune matière détectée : ajoutez-les à la main')}catch(x){toast(x.message||'Lecture impossible');S.found=null}
+    S.busy='';render()}});
+</script></body></html>
