@@ -63,6 +63,9 @@ body{min-height:100dvh}
 .cap{background:#fff;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
 .cap img{width:100%;aspect-ratio:4/3;object-fit:cover;cursor:pointer;display:block}
 .cb{padding:12px 14px}.cb p{color:#3B4468;white-space:pre-wrap;word-break:break-word}.cb p.none{color:var(--mute);font-style:italic}.cb .row{margin-top:10px}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.badge{font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:99px;background:#EEF1FF;color:var(--pri)}.badge.ok{background:#E6F8F1;color:#0B7A57}.badge.warn{background:#FFF3E0;color:#B35C00}
+.desc{color:#3B4468;white-space:pre-wrap;margin-top:4px;word-break:break-word}.sec{font-size:.95rem;font-weight:700;margin:18px 0 8px}.item .g small{display:block}
 .pre{width:100%;max-height:240px;object-fit:contain;border-radius:14px;background:#F0F3FF;margin-bottom:14px}
 @media(max-width:1000px){.shell{grid-template-columns:210px 1fr}}
 @media(max-width:800px){.shell{display:block}aside{display:none}
@@ -135,7 +138,7 @@ function seedExtras(){
    ['p2','Conception',null,0],['p2a','Schéma de la base de données','p2',1],['p2b','Maquettes des écrans','p2',0],
    ['p3','Développement',null,0],['p3a','API de collecte des mesures','p3',1],['p3b','Tableau de bord','p3',0],['p3c','Alertes de surconsommation','p3',0],
    ['p4','Rédaction du rapport',null,0]]
-   .forEach(([id,title,parent,done],i)=>add('ptasks/'+id,{title,parent,done:!!done,ts:now+i}));
+   .forEach(([id,title,parent,done],i)=>add('ptasks/'+id,{title,desc:parent?'':'Étape clé du projet.',parent,done:!!done,report:done?'Travail réalisé et vérifié ; résultats conformes aux attentes.':'',ts:now+i}));
   add('media/s0',{scope:'pfe',ref:'p3a',data:pic(200,'Capture : test API'),desc:'Test de l\'API de collecte : requête envoyée et réponse obtenue.',ts:now});
   add('media/s1',{scope:'pfe',ref:'p2a',data:pic(150,'Capture : schéma BDD'),desc:'Schéma de la base de données validé avec l\'encadrant.',ts:now-1});
   notify();
@@ -158,7 +161,7 @@ const hue=s=>[...norm(s)].reduce((a,c)=>(a*31+c.charCodeAt(0))&0xffff,7)%360;
 const slug=s=>norm(s).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'c'+hue(s);
 const S={user:null,ready:false,profile:{},courses:[],tasks:[],ptasks:[],pfe:null,notes:[],media:[],view:'home',cid:null,tab:'notes',found:null,slots:{},manual:false,demo:false,busy:'',w:{},subs:[]};
 const col=p=>collection(db,'users',S.user.uid,p), dref=(p,id)=>doc(db,'users',S.user.uid,p,id);
-let pend=null,stream=null;
+let pend=null,stream=null,back=null;
 
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2400)}
 function openModal(h){$('#modal').innerHTML=`<div class="sheet">${h}</div>`;$('#modal').hidden=false}
@@ -274,9 +277,11 @@ async function saveSchedule(){
   await b.commit();if(S.demo)D.seedExtras();S.found=null;S.slots={};S.manual=false;toast('Rubriques créées')}
 
 /* ---------- PFE ---------- */
+/* Tâche principale : terminée quand toutes ses annexes sont exécutées. Tâche annexe : exécutée seulement avec un compte rendu. */
+const kids=id=>S.ptasks.filter(x=>x.parent===id).sort((a,b)=>a.ts-b.ts);
 const leaves=()=>S.ptasks.filter(x=>!S.ptasks.some(y=>y.parent===x.id));
-const pct=()=>{const l=leaves();return l.length?Math.round(l.filter(x=>x.done).length/l.length*100):0};
-const isDone=t=>{const k=S.ptasks.filter(y=>y.parent===t.id);return k.length?k.every(isDone):!!t.done};
+const isDone=t=>{const k=kids(t.id);return k.length?k.every(isDone):!!t.parent&&!!t.done&&!!(t.report||'').trim()};
+const pct=()=>{const l=leaves();return l.length?Math.round(l.filter(isDone).length/l.length*100):0};
 
 /* ---------- Vues ---------- */
 const tint=h=>`background:hsl(${h} 95% 93%);color:hsl(${h} 55% 28%)`;
@@ -321,16 +326,19 @@ const capCard=m=>`<figure class="cap"><img src="${m.data}" data-a="view" data-id
 const taskRow=t=>`<div class="item ${t.done?'done':''}"><input type="checkbox" data-a="tdone" data-id="${t.id}" ${t.done?'checked':''}><div class="g"><div class="t">${esc(t.title)}</div><small>${esc(course(t.cid)?.name||'')}${t.due?' · pour le '+new Date(t.due).toLocaleDateString('fr-FR'):''}</small></div><button class="btn del sm" data-a="del" data-p="tasks" data-id="${t.id}">×</button></div>`;
 function tasksPage(){const l=[...S.tasks].sort((a,b)=>(a.done-b.done)||(a.due||'9').localeCompare(b.due||'9'));
   return `<h1>Travaux à faire</h1><div class="row"><button class="btn" data-a="task">+ Ajouter un travail</button></div><div class="card" style="margin-top:16px">${l.map(taskRow).join('')||'<div class="empty">Aucun travail. Profitez-en !</div>'}</div>`}
+const annRow=t=>{const ok=isDone(t),n=S.media.filter(x=>x.ref===t.id).length,r=!!(t.report||'').trim();
+  return `<div class="item sub ${ok?'done':''}"><input type="checkbox" data-a="pdone" data-id="${t.id}" ${ok?'checked':''} aria-label="Marquer comme exécutée"><div class="g"><div class="t">${esc(t.title)}</div>${t.desc?`<small>${esc(t.desc)}</small>`:''}<div class="badges"><span class="badge">${n} capture${n>1?'s':''}</span><span class="badge ${r?'ok':'warn'}">${r?'Compte rendu rédigé':'Compte rendu manquant'}</span></div></div><span class="row" style="margin:0"><button class="btn ghost sm" data-a="pdetail" data-id="${t.id}">Ouvrir</button><button class="btn ghost sm" data-a="ptask" data-id="${t.id}">Modifier</button><button class="btn del sm" data-a="pdel" data-id="${t.id}">Supprimer</button></span></div>`};
 function pfePage(){const p=S.pfe;
-  if(!p)return `<h1>Mon PFE</h1><div class="card" style="margin-top:16px"><p>Aucun PFE enregistré.</p><div class="row"><button class="btn" data-a="pfeEdit">Ajouter mon PFE</button></div></div>`;
-  const mains=S.ptasks.filter(t=>!t.parent).sort((a,b)=>a.ts-b.ts);
-  return `<div class="row sp"><h1>${esc(p.title)}</h1><button class="btn ghost sm" data-a="pfeEdit">Modifier</button></div>
-<p style="color:var(--mute)">Thème : ${esc(p.theme||'—')}</p><p>${esc(p.desc||'')}</p>
-<div class="card" style="margin:18px 0"><div class="row sp" style="margin:0 0 8px"><b>Avancement</b><b>${pct()}%</b></div><div class="bar"><i style="width:${pct()}%"></i></div></div>
+  if(!p)return `<h1>Mon PFE</h1><div class="card" style="margin-top:16px"><p>Aucun PFE enregistré. Renseignez le titre, le thème et la description de votre projet de fin d'études.</p><div class="row"><button class="btn" data-a="pfeEdit">Ajouter mon PFE</button></div></div>`;
+  const mains=S.ptasks.filter(t=>!t.parent).sort((a,b)=>a.ts-b.ts),ann=S.ptasks.filter(t=>t.parent),ad=ann.filter(isDone).length,md=mains.filter(isDone).length;
+  return `<div class="row sp" style="margin-top:0"><h1>${esc(p.title)}</h1><span class="row" style="margin:0"><button class="btn ghost sm" data-a="pfeEdit">Modifier</button><button class="btn del sm" data-a="pfeDel">Supprimer</button></span></div>
+<p style="color:var(--mute)">Thème : ${esc(p.theme||'Non précisé')}</p>${p.desc?`<p class="desc">${esc(p.desc)}</p>`:''}
+<div class="card" style="margin:18px 0"><div class="row sp" style="margin:0 0 8px"><b>Avancement</b><b>${pct()}%</b></div><div class="bar"><i style="width:${pct()}%"></i></div>
+<p style="color:var(--mute);margin-top:10px">${md} sur ${mains.length} tâche(s) principale(s) terminée(s) · ${ad} sur ${ann.length} tâche(s) annexe(s) exécutée(s)</p></div>
 <div class="row sp"><h2 style="margin:0">Tâches</h2><button class="btn sm" data-a="ptask">+ Tâche principale</button></div>
-<div class="card" style="margin-top:12px">${mains.map(m=>{const k=S.ptasks.filter(x=>x.parent===m.id).sort((a,b)=>a.ts-b.ts);
- return pRow(m,!k.length,false)+k.map(x=>pRow(x,true,true)).join('')+`<div class="item sub"><button class="btn ghost sm" data-a="ptask" data-p="${m.id}">+ Tâche annexe</button></div>`}).join('')||'<div class="empty">Ajoutez votre première tâche principale.</div>'}</div>`}
-const pRow=(t,leaf,sub)=>`<div class="item ${sub?'sub':''} ${isDone(t)?'done':''}"><input type="checkbox" data-a="pdone" data-id="${t.id}" ${isDone(t)?'checked':''} ${leaf?'':'disabled'}><div class="g"><div class="t" ${sub?'':'style="font-weight:700"'}>${esc(t.title)}</div></div><button class="btn ghost sm" data-a="pshots" data-id="${t.id}">Captures</button><button class="btn del sm" data-a="pdel" data-id="${t.id}">×</button></div>`;
+<div class="card" style="margin-top:12px">${mains.map(m=>{const k=kids(m.id),n=k.length,a=k.filter(isDone).length,ok=isDone(m);
+ return `<div class="item" style="align-items:flex-start"><div class="g"><div class="t" style="font-weight:700">${esc(m.title)}</div>${m.desc?`<small>${esc(m.desc)}</small>`:''}<div class="badges"><span class="badge ${ok?'ok':n?'':'warn'}">${ok?'Terminée':n?a+' sur '+n+' annexes exécutées':'Aucune tâche annexe'}</span></div>${n?`<div class="bar" style="margin-top:8px"><i style="width:${Math.round(a/n*100)}%"></i></div>`:''}</div><span class="row" style="margin:0"><button class="btn ghost sm" data-a="ptask" data-id="${m.id}">Modifier</button><button class="btn del sm" data-a="pdel" data-id="${m.id}">Supprimer</button></span></div>`
+ +k.map(annRow).join('')+`<div class="item sub"><button class="btn ghost sm" data-a="ptask" data-p="${m.id}">+ Tâche annexe</button></div>`}).join('')||'<div class="empty">Ajoutez votre première tâche principale, puis décomposez-la en tâches annexes.</div>'}</div>`}
 
 function render(){const a=$('#app');
   if(!S.user){a.innerHTML=login();return}
@@ -350,9 +358,9 @@ const A={
  tab:e=>{S.tab=e.t;render()},
  shoot:()=>{const v=$('#cam');if(!v?.videoWidth)return toast('Caméra non prête');const c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);shrink(c.toDataURL()).then(done)},
  photo:e=>addPhoto(e.s,''),
- view:e=>{const m=S.media.find(x=>x.id===e.id);openModal(`<img class="big" src="${m.data}" alt=""><p style="margin-top:12px;white-space:pre-wrap">${esc(m.desc||'Aucune description')}</p><div class="row"><button class="btn ghost" data-a="editcap" data-id="${m.id}">Modifier la description</button><button class="btn del" data-a="delm" data-id="${m.id}">Supprimer</button><button class="btn ghost" data-a="close">Fermer</button></div>`)},
- delm:async e=>{if(!confirm('Supprimer cette capture ?'))return;await deleteDoc(dref('media',e.id));closeModal()},
- editcap:async e=>{const m=S.media.find(x=>x.id===e.id);if(!m)return;const v=await ask('Description de la capture',[{k:'desc',l:'Description',t:'area',v:m.desc,rows:4}],'Enregistrer',`<img class="pre" src="${m.data}" alt="">`);if(v)await updateDoc(dref('media',e.id),{desc:(v.desc||'').trim()})},
+ view:e=>{const m=S.media.find(x=>x.id===e.id);openModal(`<img class="big" src="${m.data}" alt=""><p style="margin-top:12px;white-space:pre-wrap">${esc(m.desc||'Aucune description')}</p><div class="row"><button class="btn ghost" data-a="editcap" data-id="${m.id}">Modifier la description</button><button class="btn del" data-a="delm" data-id="${m.id}">Supprimer</button><button class="btn ghost" data-a="pback">Fermer</button></div>`)},
+ delm:async e=>{if(!confirm('Supprimer cette capture ?'))return;S.media=S.media.filter(x=>x.id!==e.id);await deleteDoc(dref('media',e.id));closeModal();if(back)A.pdetail({id:back})},
+ editcap:async e=>{const m=S.media.find(x=>x.id===e.id);if(!m)return;const v=await ask('Description de la capture',[{k:'desc',l:'Description',t:'area',v:m.desc,rows:4}],'Enregistrer',`<img class="pre" src="${m.data}" alt="">`);if(v){m.desc=(v.desc||'').trim();await updateDoc(dref('media',e.id),{desc:m.desc})}if(back)A.pdetail({id:back})},
  delc:async e=>{if(!confirm('Supprimer cette rubrique avec ses notes, captures et travaux ?'))return;const b=writeBatch(db);b.delete(dref('courses',e.id));S.notes.forEach(n=>b.delete(dref('notes',n.id)));S.media.forEach(m=>b.delete(dref('media',m.id)));S.tasks.filter(t=>t.cid===e.id).forEach(t=>b.delete(dref('tasks',t.id)));await b.commit();go('home')},
  manualS:()=>{S.found=[];S.slots={};S.manual=true;render()},
  newCourse:async()=>{const v=await ask('Nouvelle rubrique',[{k:'n',l:'Nom de la matière *',v:'',req:1},{k:'d',l:'Jour (facultatif)',t:'select',v:'',o:[['','Non précisé'],...DAYS.map(d=>[d,d])]},{k:'s',l:'Début (facultatif)',t:'time',v:''},{k:'e',l:'Fin (facultatif)',t:'time',v:''}],'Créer');
@@ -363,22 +371,41 @@ const A={
   n.id?await updateDoc(dref('notes',n.id),v):await addDoc(col('notes'),{...v,cid:S.cid,ts:Date.now()})},
  task:async e=>{const v=await ask('Travail à faire',[{k:'title',l:'Intitulé',v:'',req:1},{k:'cid',l:'Matière',t:'select',v:e.c||S.cid||S.courses[0]?.id,o:S.courses.map(c=>[c.id,c.name])},{k:'due',l:'Pour le',t:'date',v:''}],'Ajouter');if(v)await addDoc(col('tasks'),{...v,done:false,ts:Date.now()})},
  tdone:e=>updateDoc(dref('tasks',e.id),{done:!S.tasks.find(t=>t.id===e.id).done}),
- pfeEdit:async()=>{const p=S.pfe||{};const v=await ask('Mon PFE',[{k:'title',l:'Titre du PFE',v:p.title,req:1},{k:'theme',l:'Thème',v:p.theme},{k:'desc',l:'Description',t:'area',v:p.desc}]);if(v)await setDoc(dref('pfe','main'),v,{merge:true})},
- ptask:async e=>{const v=await ask(e.p?'Tâche annexe':'Tâche principale',[{k:'title',l:'Intitulé',v:'',req:1}],'Ajouter');if(v)await addDoc(col('ptasks'),{title:v.title,parent:e.p||null,done:false,ts:Date.now()})},
- pdone:e=>updateDoc(dref('ptasks',e.id),{done:!S.ptasks.find(t=>t.id===e.id).done}),
- pdel:async e=>{if(!confirm('Supprimer cette tâche et ses annexes ?'))return;const b=writeBatch(db);b.delete(dref('ptasks',e.id));S.ptasks.filter(t=>t.parent===e.id).forEach(t=>b.delete(dref('ptasks',t.id)));S.media.filter(m=>m.ref===e.id).forEach(m=>b.delete(dref('media',m.id)));await b.commit()},
- pshots:e=>{const t=S.ptasks.find(x=>x.id===e.id),m=S.media.filter(x=>x.ref===e.id);
-  openModal(`<h3>${esc(t.title)}</h3><div class="caps" style="grid-template-columns:1fr">${m.map(capCard).join('')||'<div class="empty">Aucune capture.</div>'}</div><div class="row"><button class="btn" data-a="shot" data-id="${e.id}">Ajouter une capture</button><button class="btn ghost" data-a="close">Fermer</button></div>`)},
- shot:async e=>{await addPhoto('pfe',e.id);A.pshots(e)},
+ pfeEdit:async()=>{const p=S.pfe||{};const v=await ask(S.pfe?'Modifier mon PFE':'Ajouter mon PFE',[{k:'title',l:'Titre du PFE *',v:p.title,req:1},{k:'theme',l:'Thème',v:p.theme},{k:'desc',l:'Description',t:'area',v:p.desc,rows:5}]);if(v)await setDoc(dref('pfe','main'),{title:v.title.trim(),theme:(v.theme||'').trim(),desc:(v.desc||'').trim()},{merge:true})},
+ pfeDel:async()=>{if(!confirm('Supprimer le PFE avec toutes ses tâches, comptes rendus et captures ? Cette action est définitive.'))return;const b=writeBatch(db);b.delete(dref('pfe','main'));S.ptasks.forEach(t=>b.delete(dref('ptasks',t.id)));S.media.forEach(m=>b.delete(dref('media',m.id)));await b.commit();toast('PFE supprimé')},
+ ptask:async e=>{const t=e.id?S.ptasks.find(x=>x.id===e.id):null,sub=t?!!t.parent:!!e.p;
+  const v=await ask((t?'Modifier la ':'Nouvelle ')+(sub?'tâche annexe':'tâche principale'),[{k:'title',l:'Intitulé *',v:t?.title,req:1},{k:'desc',l:'Description',t:'area',v:t?.desc,rows:4}],t?'Enregistrer':'Ajouter');
+  if(!v)return;const d={title:v.title.trim(),desc:(v.desc||'').trim()};
+  t?await updateDoc(dref('ptasks',t.id),d):await addDoc(col('ptasks'),{...d,parent:e.p||null,done:false,report:'',ts:Date.now()})},
+ pdone:e=>{const t=S.ptasks.find(x=>x.id===e.id);if(!t)return;
+  if(isDone(t))return updateDoc(dref('ptasks',e.id),{done:false});
+  if(!(t.report||'').trim()){toast('Rédigez d\'abord le compte rendu pour marquer la tâche comme exécutée');render();A.pdetail(e);return}
+  return updateDoc(dref('ptasks',e.id),{done:true})},
+ pdel:async e=>{const t=S.ptasks.find(x=>x.id===e.id);if(!t)return;const ids=[t.id,...kids(t.id).map(x=>x.id)];
+  if(!confirm(t.parent?'Supprimer cette tâche annexe, son compte rendu et ses captures ?':'Supprimer cette tâche principale, ses tâches annexes, comptes rendus et captures ?'))return;
+  const b=writeBatch(db);ids.forEach(i=>b.delete(dref('ptasks',i)));S.media.filter(m=>ids.includes(m.ref)).forEach(m=>b.delete(dref('media',m.id)));await b.commit()},
+ pdetail:e=>{const t=S.ptasks.find(x=>x.id===e.id);if(!t)return;back=t.id;const m=S.media.filter(x=>x.ref===t.id),ok=isDone(t),par=S.ptasks.find(x=>x.id===t.parent);
+  openModal(`<h3>${esc(t.title)}</h3>${par?`<p style="color:var(--mute);font-size:.85rem">Tâche annexe de : ${esc(par.title)}</p>`:''}${t.desc?`<p class="desc">${esc(t.desc)}</p>`:''}
+<div class="badges"><span class="badge ${ok?'ok':'warn'}">${ok?'Exécutée':'À faire'}</span></div>
+<div class="sec">Captures</div><div class="caps" style="grid-template-columns:1fr;margin-top:0">${m.map(capCard).join('')||'<div class="empty">Aucune capture.</div>'}</div><div class="row"><button class="btn ghost sm" data-a="shot" data-id="${t.id}">Ajouter une capture</button></div>
+<form id="rep" data-id="${t.id}"><div class="sec">Compte rendu <span style="color:#E03131">*</span></div><textarea name="report" rows="6" placeholder="Travail réalisé, résultats obtenus, difficultés rencontrées.">${esc(t.report)}</textarea><div class="row"><button class="btn ghost sm">Enregistrer le compte rendu</button></div></form>
+<div class="row"><button class="btn" data-a="pmark" data-id="${t.id}">${ok?'Rouvrir la tâche':'Marquer comme exécutée'}</button><button class="btn ghost" data-a="pclose">Fermer</button></div>`)},
+ pmark:async e=>{const t=S.ptasks.find(x=>x.id===e.id);if(!t)return;const ta=$('#rep textarea'),r=(ta?ta.value:t.report||'').trim();
+  if(isDone(t)){Object.assign(t,{done:false,report:r});await updateDoc(dref('ptasks',t.id),{done:false,report:r});A.pdetail(e);return}
+  if(!r){toast('Le compte rendu est obligatoire pour marquer la tâche comme exécutée');ta?.focus();return}
+  Object.assign(t,{done:true,report:r});await updateDoc(dref('ptasks',t.id),{done:true,report:r});toast('Tâche exécutée');A.pdetail(e)},
+ pclose:()=>{back=null;closeModal()},pback:()=>back?A.pdetail({id:back}):closeModal(),
+ shot:async e=>{await addPhoto('pfe',e.id);setTimeout(()=>A.pdetail(e),60)},
  rm:e=>{const x=S.found.splice(+e.i,1)[0];delete S.slots[norm(x)];render()},
  addf:async()=>{const v=await ask('Ajouter une matière',[{k:'n',l:'Nom',v:'',req:1}],'Ajouter');if(v&&!S.found.some(x=>norm(x)===norm(v.n)))S.found.push(v.n.trim());render()},
  saveS:()=>saveSchedule(),cancelS:()=>{S.found=null;S.slots={};S.manual=false;render()},
  newSched:async()=>{await setDoc(doc(db,'users',S.user.uid),{hasSchedule:false},{merge:true})},
  skipS:async()=>{await setDoc(doc(db,'users',S.user.uid),{hasSchedule:true},{merge:true})}
 };
-document.addEventListener('click',e=>{const t=e.target.closest('[data-a]');if(t&&A[t.dataset.a]){if(t.type==='checkbox')e.stopPropagation();A[t.dataset.a](t.dataset)}else if(e.target.id==='modal')closeModal()});
+document.addEventListener('click',e=>{const t=e.target.closest('[data-a]');if(t&&A[t.dataset.a]){if(t.type==='checkbox')e.stopPropagation();A[t.dataset.a](t.dataset)}else if(e.target.id==='modal'){back=null;closeModal()}});
 document.addEventListener('submit',async e=>{e.preventDefault();
   if(e.target.id==='f'){const v=Object.fromEntries(new FormData(e.target));const p=pend;pend=null;$('#modal').hidden=true;p?.(v)}
+  if(e.target.id==='rep'){const id=e.target.dataset.id,t=S.ptasks.find(x=>x.id===id),r=String(new FormData(e.target).get('report')||'').trim(),u={report:r};if(!r&&t.done)u.done=false;Object.assign(t,u);await updateDoc(dref('ptasks',id),u);toast('Compte rendu enregistré');A.pdetail({id});return}
   if(e.target.id==='man'){addManual(Object.fromEntries(new FormData(e.target)));return}
   if(e.target.id==='login'){const f=new FormData(e.target);const em=f.get('e').trim();
     if(DEMO_ON&&em==='admin'&&f.get('p')==='admin'){S.demo=true;X=D;start({uid:'demo'});return}
