@@ -66,6 +66,8 @@ body{min-height:100dvh}
 .badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .badge{font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:99px;background:#EEF1FF;color:var(--pri)}.badge.ok{background:#E6F8F1;color:#0B7A57}.badge.warn{background:#FFF3E0;color:#B35C00}
 .desc{color:#3B4468;white-space:pre-wrap;margin-top:4px;word-break:break-word}.sec{font-size:.95rem;font-weight:700;margin:18px 0 8px}.item .g small{display:block}
+.notice{background:#FFF3E0;color:#B35C00;padding:10px 12px;border-radius:12px;margin-bottom:14px;font-size:.88rem}
+.ck{display:flex;gap:10px;align-items:flex-start;font-weight:500;margin-bottom:10px}.ck input{flex:none;margin-top:2px}.ck img{width:56px;height:42px;object-fit:cover;border-radius:8px;flex:none}
 .pre{width:100%;max-height:240px;object-fit:contain;border-radius:14px;background:#F0F3FF;margin-bottom:14px}
 @media(max-width:1000px){.shell{grid-template-columns:210px 1fr}}
 @media(max-width:800px){.shell{display:block}aside{display:none}
@@ -150,7 +152,7 @@ let F=null,auth,db;
 const LIVE=!/^VOTRE_/.test(cfg.apiKey);
 try{if(!LIVE)throw 'demo';const u=m=>`https://www.gstatic.com/firebasejs/10.14.1/firebase-${m}.js`;
   const [a,b,c]=await Promise.all([import(u('app')),import(u('auth')),import(u('firestore'))]);
-  F={...b,...c};const app=a.initializeApp(cfg);auth=F.getAuth(app);db=F.getFirestore(app)}
+  F={...b,...c};const app=a.initializeApp(cfg);auth=F.getAuth(app);await F.setPersistence(auth,F.inMemoryPersistence);db=F.getFirestore(app)}
 catch(e){if(LIVE)console.warn('Firebase indisponible',e)}
 let X=F||D;
 const [collection,doc,addDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch]=['collection','doc','addDoc','setDoc','updateDoc','deleteDoc','onSnapshot','query','where','writeBatch'].map(n=>(...a)=>X[n](...a));
@@ -159,9 +161,17 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const norm=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
 const hue=s=>[...norm(s)].reduce((a,c)=>(a*31+c.charCodeAt(0))&0xffff,7)%360;
 const slug=s=>norm(s).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'c'+hue(s);
-const S={user:null,ready:false,profile:{},courses:[],tasks:[],ptasks:[],pfe:null,notes:[],media:[],view:'home',cid:null,tab:'notes',found:null,slots:{},manual:false,demo:false,busy:'',w:{},subs:[]};
+const S={user:null,ready:false,profile:{},courses:[],tasks:[],ptasks:[],pfe:null,notes:[],media:[],view:'home',cid:null,tab:'notes',found:null,slots:{},manual:false,notice:'',demo:false,busy:'',w:{},subs:[]};
 const col=p=>collection(db,'users',S.user.uid,p), dref=(p,id)=>doc(db,'users',S.user.uid,p,id);
-let pend=null,stream=null,back=null;
+let pend=null,stream=null,back=null,last=Date.now(),tk=null;
+/* ---------- Sécurité : blocage après 8 échecs (5 min) et inactivité (5 min) ---------- */
+const LK='kampus_lock',MAXTRY=8,LOCKMS=300000,IDLE=300000;
+const lk=()=>{try{return JSON.parse(localStorage.getItem(LK))||{n:0,until:0}}catch{return{n:0,until:0}}};
+const setLk=o=>{try{localStorage.setItem(LK,JSON.stringify(o))}catch{}};
+const left=()=>Math.max(0,lk().until-Date.now());
+function fail(){const o=lk();if(o.until&&o.until<=Date.now()){o.n=0;o.until=0}o.n++;if(o.n>=MAXTRY){o.until=Date.now()+LOCKMS;o.n=0}setLk(o);return o}
+function tick(){clearInterval(tk);const f=()=>{const e=$('#err'),b=$('#login .btn');if(!e||!b){clearInterval(tk);return}const r=left();
+  if(r<=0){clearInterval(tk);b.disabled=false;e.textContent='';return}b.disabled=true;const s=Math.ceil(r/1000);e.textContent=`Trop de tentatives échouées. Réessayez dans ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}.`};f();tk=setInterval(f,1000)}
 
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2400)}
 function openModal(h){$('#modal').innerHTML=`<div class="sheet">${h}</div>`;$('#modal').hidden=false}
@@ -172,7 +182,7 @@ function watch(k,q){S.w[k]?.();S[k]=[];S.w[k]=q?onSnapshot(q,s=>{S[k]=s.docs.map
 /* ---------- Auth & données ---------- */
 function start(u){
   S.subs.forEach(f=>f());S.subs=[];Object.keys(S.w).forEach(k=>watch(k,null));
-  S.user=u;S.ready=false;S.profile={};S.view='home';S.cid=null;S.found=null;S.slots={};S.manual=false;
+  S.user=u;if(u){S.notice='';last=Date.now()}S.ready=false;S.profile={};S.view='home';S.cid=null;S.found=null;S.slots={};S.manual=false;
   if(u){const uid=u.uid,c=p=>collection(db,'users',uid,p),list=(p,k)=>sub(onSnapshot(c(p),s=>{S[k]=s.docs.map(d=>({id:d.id,...d.data()}));render()}));
     sub(onSnapshot(doc(db,'users',uid),d=>{S.profile=d.data()||{};S.ready=true;render()},err=>{console.error(err);toast('Accès refusé : vérifiez les règles Firestore')}));
     list('courses','courses');list('tasks','tasks');list('ptasks','ptasks');
@@ -276,6 +286,28 @@ async function saveSchedule(){
   b.set(doc(db,'users',S.user.uid),{hasSchedule:true,scheduleName:S.scheduleName||''},{merge:true});
   await b.commit();if(S.demo)D.seedExtras();S.found=null;S.slots={};S.manual=false;toast('Rubriques créées')}
 
+/* ---------- Fiche de révision (PDF) ---------- */
+const JSPDF='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+const latin=s=>String(s??'').replace(/\r/g,'').replace(/\t/g,'  ').replace(/[’‘]/g,"'").replace(/[“”]/g,'"').replace(/[–—]/g,'-').replace(/…/g,'...').replace(/[•·▪]/g,'-').replace(/œ/g,'oe').replace(/Œ/g,'OE').replace(/€/g,'EUR').replace(/[\u00A0\u202F\u2009]/g,' ').replace(/[^\n\x20-\x7E\xA1-\xFF]/g,'?');
+const toJpeg=src=>new Promise(r=>{const i=new Image();i.onload=()=>{const W=i.width||300,H=i.height||300,k=Math.min(1,1400/Math.max(W,H)),c=document.createElement('canvas');c.width=Math.max(1,W*k|0);c.height=Math.max(1,H*k|0);const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(i,0,0,c.width,c.height);r({d:c.toDataURL('image/jpeg',.82),w:c.width,h:c.height})};i.onerror=()=>r(null);i.src=src});
+async function fichePdf(title,c,notes,caps){
+  await load(JSPDF);const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),PW=210,PH=297,M=18,CW=PW-2*M;let y=M;
+  const ensure=h=>{if(y+h>PH-M-4){d.addPage();y=M}};
+  const text=(s,size,style,col,gap)=>{d.setFont('helvetica',style);d.setFontSize(size);d.setTextColor(...col);const lh=size*.3528*1.38;
+    for(const l of d.splitTextToSize(latin(s),CW)){ensure(lh);d.text(l,M,y+size*.3528);y+=lh}y+=gap||0};
+  text(title,20,'bold',[26,33,66],1.5);
+  text(`Matière : ${c.name}   |   Générée le ${new Date().toLocaleDateString('fr-FR')}`,9.5,'normal',[107,115,150],2);
+  d.setDrawColor(76,111,255);d.setLineWidth(.6);d.line(M,y,PW-M,y);y+=6;
+  if(notes.length){text('Notions essentielles',14,'bold',[51,71,201],2);
+    notes.forEach((n,i)=>{ensure(18);text(`${i+1}. ${n.title}`,11.5,'bold',[26,33,66],1);text(n.body||'(Sans contenu)',10,'normal',[59,68,104],5)})}
+  if(caps.length){y+=2;ensure(24);text('Captures',14,'bold',[51,71,201],2);
+    for(const [i,m] of caps.entries()){const im=await toJpeg(m.data);if(!im)continue;let w=CW,h=im.h*w/im.w;if(h>95){h=95;w=im.w*h/im.h}
+      const cap=`Capture ${i+1} : ${m.desc||'Sans description'}`;ensure(h+Math.ceil(cap.length/95)*4.6+8);
+      d.addImage(im.d,'JPEG',M,y,w,h);y+=h+2;text(cap,9.5,'italic',[59,68,104],6)}}
+  const n=d.getNumberOfPages();for(let p=1;p<=n;p++){d.setPage(p);d.setFont('helvetica','normal');d.setFontSize(8);d.setTextColor(140,146,170);d.text('Kampus',M,PH-9);d.text(`Page ${p} / ${n}`,PW-M,PH-9,{align:'right'})}
+  d.save(`fiche-revision-${slug(c.name)}.pdf`)}
+const asc=(a,b)=>(a.ts||0)-(b.ts||0);
+
 /* ---------- PFE ---------- */
 /* Tâche principale : terminée quand toutes ses annexes sont exécutées. Tâche annexe : exécutée seulement avec un compte rendu. */
 const kids=id=>S.ptasks.filter(x=>x.parent===id).sort((a,b)=>a.ts-b.ts);
@@ -288,9 +320,9 @@ const tint=h=>`background:hsl(${h} 95% 93%);color:hsl(${h} 55% 28%)`;
 const course=id=>S.courses.find(c=>c.id===id);
 const IC={home:'<svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>',tasks:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',pfe:'<svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5zM6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>',out:'<svg viewBox="0 0 24 24"><path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9"/></svg>'};
 const nav=(v,ic,l)=>`<button class="nav ${S.view===v?'on':''}" data-a="go" data-v="${v}">${ic} ${l}</button>`;
-function login(){return `<div class="center"><form class="card" id="login"><h1>Kampus</h1><p style="color:var(--mute);margin:6px 0 22px">Connectez-vous avec le compte créé pour vous.</p>
+function login(){return `<div class="center"><form class="card" id="login"><h1>Kampus</h1><p style="color:var(--mute);margin:6px 0 22px">Connectez-vous avec le compte créé pour vous.</p>${S.notice?`<div class="notice">${esc(S.notice)}</div>`:''}
 <label>Identifiant ou e-mail<input name="e" type="text" required autocomplete="username"></label><label>Mot de passe<input name="p" type="password" required autocomplete="current-password"></label>
-<button class="btn" style="width:100%">Se connecter</button><div class="err" id="err"></div>${DEMO_ON?'<p style="color:var(--mute);font-size:.85rem;margin-top:6px">Démo : identifiant <b>admin</b>, mot de passe <b>admin</b></p>':''}</form></div>`}
+<button class="btn" style="width:100%">Se connecter</button><div class="err" id="err"></div><p style="color:var(--mute);font-size:.82rem;margin-top:10px">Session protégée : fermeture automatique après 5 minutes d'inactivité.</p>${DEMO_ON?'<p style="color:var(--mute);font-size:.85rem;margin-top:6px">Démo : identifiant <b>admin</b>, mot de passe <b>admin</b></p>':''}</form></div>`}
 const DAYS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
 const slotTxt=a=>(a||[]).map(x=>[x.d,x.s&&x.e?x.s+'–'+x.e:x.s||x.e].filter(Boolean).join(' ')).filter(Boolean).join(' · ');
 function upload(){const f=S.found;
@@ -317,7 +349,7 @@ function home(){const open=S.tasks.filter(t=>!t.done).length;
 <div class="row"><button class="btn sm" data-a="newCourse">Ajouter une rubrique</button><button class="btn ghost sm" data-a="newSched">Mettre à jour l'emploi du temps</button></div>`}
 function coursePage(){const c=course(S.cid);if(!c)return '<div class="empty">Rubrique introuvable</div>';
   const t=S.tasks.filter(x=>x.cid===c.id);
-  return `<button class="btn ghost sm" data-a="go" data-v="home">Retour</button><div class="row sp" style="margin-top:6px"><h1>${esc(c.name)}</h1><button class="btn del sm" data-a="delc" data-id="${c.id}">Supprimer la rubrique</button></div>${c.slots?.length?`<p style="color:var(--mute)">${esc(slotTxt(c.slots))}</p>`:''}
+  return `<button class="btn ghost sm" data-a="go" data-v="home">Retour</button><div class="row sp" style="margin-top:6px"><h1>${esc(c.name)}</h1><span class="row" style="margin:0"><button class="btn sm" data-a="fiche">Fiche de révision (PDF)</button><button class="btn del sm" data-a="delc" data-id="${c.id}">Supprimer la rubrique</button></span></div>${c.slots?.length?`<p style="color:var(--mute)">${esc(slotTxt(c.slots))}</p>`:''}
 <div class="tabs">${[['notes','Notes'],['photos','Captures'],['tasks','Travaux']].map(([k,l])=>`<button class="${S.tab===k?'on':''}" data-a="tab" data-t="${k}">${l}</button>`).join('')}</div>
 ${S.tab==='notes'?`<button class="btn" data-a="note">+ Nouvelle note</button><div style="margin-top:16px">${S.notes.map(n=>`<div class="card note"><div class="row sp" style="margin:0"><b>${esc(n.title)}</b><span class="row" style="margin:0"><button class="btn ghost sm" data-a="note" data-id="${n.id}">Modifier</button><button class="btn del sm" data-a="del" data-p="notes" data-id="${n.id}">Suppr.</button></span></div><p>${esc(n.body)}</p></div>`).join('')||'<div class="empty">Aucune note. Ajoutez les notions essentielles du cours.</div>'}</div>`
 :S.tab==='photos'?`<button class="btn" data-a="photo" data-s="c:${c.id}">Ajouter une capture</button><div class="caps">${S.media.map(capCard).join('')}</div>${S.media.length?'':'<div class="empty">Aucune capture. Photographiez votre tableau ou votre cahier, puis décrivez-la.</div>'}`
@@ -341,7 +373,7 @@ function pfePage(){const p=S.pfe;
  +k.map(annRow).join('')+`<div class="item sub"><button class="btn ghost sm" data-a="ptask" data-p="${m.id}">+ Tâche annexe</button></div>`}).join('')||'<div class="empty">Ajoutez votre première tâche principale, puis décomposez-la en tâches annexes.</div>'}</div>`}
 
 function render(){const a=$('#app');
-  if(!S.user){a.innerHTML=login();return}
+  if(!S.user){a.innerHTML=login();if(left()>0)tick();return}
   if(!S.ready){a.innerHTML='<div class="center"><b>Chargement…</b></div>';return}
   if(!S.profile.hasSchedule||S.found||S.busy){a.innerHTML=upload();return}
   const body=S.view==='course'?coursePage():S.view==='tasks'?tasksPage():S.view==='pfe'?pfePage():home();
@@ -362,6 +394,12 @@ const A={
  delm:async e=>{if(!confirm('Supprimer cette capture ?'))return;S.media=S.media.filter(x=>x.id!==e.id);await deleteDoc(dref('media',e.id));closeModal();if(back)A.pdetail({id:back})},
  editcap:async e=>{const m=S.media.find(x=>x.id===e.id);if(!m)return;const v=await ask('Description de la capture',[{k:'desc',l:'Description',t:'area',v:m.desc,rows:4}],'Enregistrer',`<img class="pre" src="${m.data}" alt="">`);if(v){m.desc=(v.desc||'').trim();await updateDoc(dref('media',e.id),{desc:m.desc})}if(back)A.pdetail({id:back})},
  delc:async e=>{if(!confirm('Supprimer cette rubrique avec ses notes, captures et travaux ?'))return;const b=writeBatch(db);b.delete(dref('courses',e.id));S.notes.forEach(n=>b.delete(dref('notes',n.id)));S.media.forEach(m=>b.delete(dref('media',m.id)));S.tasks.filter(t=>t.cid===e.id).forEach(t=>b.delete(dref('tasks',t.id)));await b.commit();go('home')},
+ fiche:()=>{const c=course(S.cid);if(!c)return;const ns=[...S.notes].sort(asc),ms=[...S.media].sort(asc);
+  if(!ns.length&&!ms.length){toast('Ajoutez d\'abord des notes ou des captures à cette rubrique');return}
+  openModal(`<form id="fi"><h3>Fiche de révision</h3><label>Titre de la fiche<input name="t" value="${esc('Fiche de révision : '+c.name)}" required></label>
+${ns.length?`<div class="sec">Notions à inclure</div>${ns.map(n=>`<label class="ck"><input type="checkbox" name="n" value="${n.id}" checked><span>${esc(n.title)}</span></label>`).join('')}`:''}
+${ms.length?`<div class="sec">Captures à inclure</div>${ms.map(m=>`<label class="ck"><input type="checkbox" name="m" value="${m.id}" checked><img src="${m.data}" alt=""><span>${esc(m.desc||'Sans description')}</span></label>`).join('')}`:''}
+<div class="row"><button class="btn" id="fibtn">Télécharger le PDF</button><button type="button" class="btn ghost" data-a="close">Annuler</button></div></form>`)},
  manualS:()=>{S.found=[];S.slots={};S.manual=true;render()},
  newCourse:async()=>{const v=await ask('Nouvelle rubrique',[{k:'n',l:'Nom de la matière *',v:'',req:1},{k:'d',l:'Jour (facultatif)',t:'select',v:'',o:[['','Non précisé'],...DAYS.map(d=>[d,d])]},{k:'s',l:'Début (facultatif)',t:'time',v:''},{k:'e',l:'Fin (facultatif)',t:'time',v:''}],'Créer');
   if(!v)return;const n=v.n.trim().replace(/\s+/g,' '),id=slug(n),slots=[...(course(id)?.slots||[])];if(v.d||v.s||v.e)slots.push({d:v.d||'',s:v.s||'',e:v.e||''});
@@ -405,16 +443,30 @@ const A={
 document.addEventListener('click',e=>{const t=e.target.closest('[data-a]');if(t&&A[t.dataset.a]){if(t.type==='checkbox')e.stopPropagation();A[t.dataset.a](t.dataset)}else if(e.target.id==='modal'){back=null;closeModal()}});
 document.addEventListener('submit',async e=>{e.preventDefault();
   if(e.target.id==='f'){const v=Object.fromEntries(new FormData(e.target));const p=pend;pend=null;$('#modal').hidden=true;p?.(v)}
+  if(e.target.id==='fi'){const f=new FormData(e.target),ids=f.getAll('n'),mi=f.getAll('m'),c=course(S.cid),btn=$('#fibtn'),
+    ns=S.notes.filter(n=>ids.includes(n.id)).sort(asc),ms=S.media.filter(m=>mi.includes(m.id)).sort(asc);
+    if(!ns.length&&!ms.length){toast('Sélectionnez au moins une notion ou une capture');return}
+    btn.disabled=true;btn.textContent='Création du PDF…';
+    try{await fichePdf(String(f.get('t')).trim()||'Fiche de révision',c,ns,ms);closeModal();toast('Fiche téléchargée')}
+    catch(x){console.error(x);btn.disabled=false;btn.textContent='Télécharger le PDF';toast('Création du PDF impossible : vérifiez votre connexion')}return}
   if(e.target.id==='rep'){const id=e.target.dataset.id,t=S.ptasks.find(x=>x.id===id),r=String(new FormData(e.target).get('report')||'').trim(),u={report:r};if(!r&&t.done)u.done=false;Object.assign(t,u);await updateDoc(dref('ptasks',id),u);toast('Compte rendu enregistré');A.pdetail({id});return}
   if(e.target.id==='man'){addManual(Object.fromEntries(new FormData(e.target)));return}
-  if(e.target.id==='login'){const f=new FormData(e.target);const em=f.get('e').trim();
-    if(DEMO_ON&&em==='admin'&&f.get('p')==='admin'){S.demo=true;X=D;start({uid:'demo'});return}
-    if(!F){$('#err').textContent='Firebase non configuré. Utilisez admin / admin pour la démo.';return}
-    if(!em.includes('@')){$('#err').textContent='Saisissez l\'adresse e-mail de votre compte.';return}
-    try{await F.signInWithEmailAndPassword(auth,em,f.get('p'))}catch{$('#err').textContent='E-mail ou mot de passe incorrect.'}}});
+  if(e.target.id==='login'){const f=new FormData(e.target),em=String(f.get('e')).trim(),pw=String(f.get('p')),er=$('#err');
+    if(left()>0){tick();return}
+    const bad=c=>{const o=fail();if(left()>0)tick();else er.textContent=c==='auth/too-many-requests'?'Trop de tentatives sur le serveur. Réessayez dans quelques minutes.':`Identifiants incorrects. Tentatives restantes : ${MAXTRY-o.n}.`};
+    if(DEMO_ON&&em==='admin'&&pw==='admin'){setLk({n:0,until:0});S.demo=true;X=D;start({uid:'demo'});return}
+    if(!F){if(DEMO_ON)bad();else er.textContent='Firebase non configuré.';return}
+    if(!em.includes('@')){er.textContent='Saisissez l\'adresse e-mail de votre compte.';return}
+    try{await F.signInWithEmailAndPassword(auth,em,pw);setLk({n:0,until:0})}
+    catch(x){const c=x?.code||'';if(c==='auth/network-request-failed')er.textContent='Connexion au serveur impossible. Vérifiez votre réseau.';else bad(c)}}});
 document.addEventListener('change',async e=>{
   if(e.target.classList.contains('gal')){const f=e.target.files[0];if(f)done(await shrink(await readFile(f)))}
   if(e.target.id==='sch'){const f=e.target.files[0];if(!f)return;S.scheduleName=f.name;S.busy='Analyse en cours… (une photo peut prendre 20 s)';render();
     try{S.found=extract(await readSchedule(f));if(!S.found.length)toast('Aucune matière détectée : ajoutez-les à la main')}catch(x){toast(x.message||'Lecture impossible');S.found=null}
     S.busy='';render()}});
+/* ---------- Sécurité : fermeture de session après 5 minutes d'inactivité ---------- */
+['pointerdown','keydown','mousemove','touchstart','scroll','wheel'].forEach(v=>addEventListener(v,()=>{last=Date.now()},{passive:true,capture:true}));
+function expire(){if(!S.user)return;S.notice='Session fermée après 5 minutes d\'inactivité. Reconnectez-vous.';closeModal();back=null;A.out()}
+const idle=()=>{if(S.user&&Date.now()-last>IDLE)expire()};
+setInterval(idle,5000);document.addEventListener('visibilitychange',idle);
 </script></body></html>
