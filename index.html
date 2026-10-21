@@ -149,11 +149,11 @@ function seedExtras(P=''){
 
 return {collection,doc,where,query,onSnapshot,addDoc,setDoc,updateDoc,deleteDoc,getDocs,writeBatch,reset,SAMPLE,seedExtras}})();
 /* ===== 3. APPLICATION ===== */
-let F=null,auth,db;
+let F=null,auth,db,st;
 const LIVE=!/^VOTRE_/.test(cfg.apiKey);
 try{if(!LIVE)throw 'demo';const u=m=>`https://www.gstatic.com/firebasejs/10.14.1/firebase-${m}.js`;
-  const [a,b,c]=await Promise.all([import(u('app')),import(u('auth')),import(u('firestore'))]);
-  F={...b,...c};const app=a.initializeApp(cfg);auth=F.getAuth(app);await F.setPersistence(auth,F.inMemoryPersistence);db=F.getFirestore(app)}
+  const [a,b,c,d]=await Promise.all([import(u('app')),import(u('auth')),import(u('firestore')),import(u('storage'))]);
+  F={...b,...c,...d};const app=a.initializeApp(cfg);auth=F.getAuth(app);await F.setPersistence(auth,F.inMemoryPersistence);db=F.getFirestore(app);st=F.getStorage(app)}
 catch(e){if(LIVE)console.warn('Firebase indisponible',e)}
 let X=F||D;
 const [collection,doc,addDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,getDocs]=['collection','doc','addDoc','setDoc','updateDoc','deleteDoc','onSnapshot','query','where','writeBatch','getDocs'].map(n=>(...a)=>X[n](...a));
@@ -364,6 +364,8 @@ const pdfList=l=>`<div class="card" style="margin-top:16px">${[...l].sort((a,b)=
 const pdfBlock=cid=>`<button class="btn" data-a="padd" data-c="${cid}">+ Ajouter un PDF</button>${pdfList(S.pdfs.filter(p=>p.cid===cid))}`;
 const docsPage=()=>`<h1>Documents</h1><p style="color:var(--mute)">Vos cours à lire plus tard, conservés d'une session à l'autre.</p><div class="row"><button class="btn" data-a="padd">+ Ajouter un PDF</button></div>${pdfList(S.pdfs)}`;
 async function pdfBlob(p){const {docs}=await getDocs(query(col('pdfchunks'),where('did','==',p.id)));const b=docs.map(d=>d.data()).sort((a,b)=>a.i-b.i);if(b.length!==p.n)throw 0;const bin=atob(b.map(x=>x.data).join('')),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:'application/pdf'})}
+const mem={};
+async function pdfUrl(p){if(p.path&&F)return F.getDownloadURL(F.ref(st,p.path));if(mem[p.id])return URL.createObjectURL(mem[p.id]);return URL.createObjectURL(await pdfBlob(p))}
 const picker=()=>`<div class="center"><div style="width:min(640px,100%)"><h1>Choisissez votre semestre</h1><p style="color:var(--mute);margin:8px 0 22px">Touchez un semestre pour retrouver vos rubriques, ou ajoutez-en un nouveau.</p><div class="grid" style="grid-template-columns:1fr">${[...S.semesters].sort(asc).map(x=>`<div class="card" style="cursor:pointer" data-a="pickS" data-id="${x.id}"><div class="row sp" style="margin:0"><b>${esc(x.name)}</b><button class="btn ghost sm" data-a="editS" data-id="${x.id}">Modifier</button></div>${x.desc?`<p class="desc">${esc(x.desc)}</p>`:''}<small style="color:var(--mute)">${S.courses.filter(c=>c.sid===x.id).length} rubrique(s)</small></div>`).join('')}</div><div class="row"><button class="btn" data-a="addS">+ Ajouter un semestre</button><button class="btn ghost" data-a="out">Se déconnecter</button></div></div></div>`;
 const capCard=m=>`<figure class="cap"><img src="${m.data}" data-a="view" data-id="${m.id}" alt="${esc(m.desc||'Capture')}"><div class="cb"><p class="${m.desc?'':'none'}">${esc(m.desc||'Aucune description')}</p><div class="row"><button class="btn ghost sm" data-a="editcap" data-id="${m.id}">Modifier</button><button class="btn del sm" data-a="delm" data-id="${m.id}">Supprimer</button></div></div></figure>`;
 const taskRow=t=>`<div class="item ${t.done?'done':''}"><input type="checkbox" data-a="tdone" data-id="${t.id}" ${t.done?'checked':''}><div class="g"><div class="t">${esc(t.title)}</div><small>${esc(course(t.cid)?.name||'')}${t.due?' · pour le '+new Date(t.due).toLocaleDateString('fr-FR'):''}</small></div><button class="btn del sm" data-a="del" data-p="tasks" data-id="${t.id}">×</button></div>`;
@@ -452,10 +454,10 @@ ${ms.length?`<div class="sec">Captures à inclure</div>${ms.map(m=>`<label class
  pickS:e=>{S.sid=e.id;go('home')},chSem:()=>{S.sid=null;go('home')},
  addS:()=>{S.imp=true;S.target=null;S.found=null;S.manual=false;S.slots={};render()},
  editS:async e=>{const x=semOf(e.id);if(!x)return;const v=await ask('Modifier le semestre',[{k:'name',l:'Nom *',v:x.name,req:1},{k:'desc',l:'Description',t:'area',v:x.desc,rows:3}]);if(v)await updateDoc(dref('semesters',x.id),{name:v.name.trim(),desc:(v.desc||'').trim()})},
- padd:e=>openModal(`<form id="pf"><h3>Ajouter un PDF</h3><label>Fichier PDF (8 Mo max) *<input type="file" name="file" accept="application/pdf,.pdf" required></label><label>Titre<input name="t" maxlength="120" placeholder="Par défaut : nom du fichier"></label><label>Rubrique<select name="c"><option value="">Aucune</option>${S.courses.map(c=>`<option value="${c.id}" ${c.id===(e.c||'')?'selected':''}>${esc(c.name)}${semOf(c.sid)?' ('+esc(semOf(c.sid).name)+')':''}</option>`).join('')}</select></label><div class="row"><button class="btn" id="pbtn">Enregistrer</button><button type="button" class="btn ghost" data-a="close">Annuler</button></div></form>`),
- pread:async e=>{const p=S.pdfs.find(x=>x.id===e.id);if(!p)return;toast('Ouverture…');try{const u=URL.createObjectURL(await pdfBlob(p));openModal(`<h3>${esc(p.title)}</h3><iframe src="${u}" title="${esc(p.title)}" style="width:100%;height:65vh;border:0;border-radius:14px;background:#F0F3FF"></iframe><div class="row"><a class="btn ghost" href="${u}" target="_blank" rel="noopener">Ouvrir dans un onglet</a><button class="btn ghost" data-a="close">Fermer</button></div>`);purl=u}catch{toast('Lecture impossible : document incomplet ou réseau indisponible')}},
- pdl:async e=>{const p=S.pdfs.find(x=>x.id===e.id);if(!p)return;try{const u=URL.createObjectURL(await pdfBlob(p)),a=document.createElement('a');a.href=u;a.download=slug(p.title)+'.pdf';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4e4)}catch{toast('Téléchargement impossible')}},
- pdelf:async e=>{const p=S.pdfs.find(x=>x.id===e.id);if(!p||!confirm('Supprimer ce document définitivement ?'))return;const b=writeBatch(db);b.delete(dref('pdfs',p.id));for(let i=0;i<p.n;i++)b.delete(dref('pdfchunks',p.id+'_'+i));await b.commit();toast('Document supprimé')},
+ padd:e=>openModal(`<form id="pf"><h3>Ajouter un PDF</h3><label>Fichier PDF (500 Mo max) *<input type="file" name="file" accept="application/pdf,.pdf" required></label><label>Titre<input name="t" maxlength="120" placeholder="Par défaut : nom du fichier"></label><label>Rubrique<select name="c"><option value="">Aucune</option>${S.courses.map(c=>`<option value="${c.id}" ${c.id===(e.c||'')?'selected':''}>${esc(c.name)}${semOf(c.sid)?' ('+esc(semOf(c.sid).name)+')':''}</option>`).join('')}</select></label><div class="row"><button class="btn" id="pbtn">Enregistrer</button><button type="button" class="btn ghost" data-a="close">Annuler</button></div></form>`),
+ pread:async e=>{const p=S.pdfs.find(x=>x.id===e.id);if(!p)return;toast('Ouverture…');try{const u=await pdfUrl(p);openModal(`<h3>${esc(p.title)}</h3><iframe src="${u}" title="${esc(p.title)}" style="width:100%;height:65vh;border:0;border-radius:14px;background:#F0F3FF"></iframe><div class="row"><a class="btn ghost" href="${u}" target="_blank" rel="noopener">Ouvrir dans un onglet</a><button class="btn ghost" data-a="close">Fermer</button></div>`);purl=u}catch{toast('Lecture impossible : document incomplet ou réseau indisponible')}},
+ pdl:async e=>{const p=S.pdfs.find(x=>x.id===e.id);if(!p)return;try{const u=await pdfUrl(p);let h=u;if(!u.startsWith('blob:')){toast('Téléchargement…');try{h=URL.createObjectURL(await(await fetch(u)).blob())}catch{window.open(u,'_blank');return}}const a=document.createElement('a');a.href=h;a.download=slug(p.title)+'.pdf';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(h),4e4)}catch{toast('Téléchargement impossible')}},
+ pdelf:async e=>{const p=S.pdfs.find(x=>x.id===e.id);if(!p||!confirm('Supprimer ce document définitivement ?'))return;if(p.path&&F)try{await F.deleteObject(F.ref(st,p.path))}catch(x){console.warn(x)}delete mem[p.id];const b=writeBatch(db);b.delete(dref('pdfs',p.id));for(let i=0;i<(p.n||0);i++)b.delete(dref('pdfchunks',p.id+'_'+i));await b.commit();toast('Document supprimé')},
 cancelS:()=>{S.found=null;S.slots={};S.manual=false;render()},
  newSched:()=>{S.imp=true;S.target=S.sid;render()},
  skipS:()=>{S.imp=false;S.found=null;render()}
@@ -473,11 +475,11 @@ document.addEventListener('submit',async e=>{e.preventDefault();
   if(e.target.id==='sf'){const f=new FormData(e.target);let sid=f.get('sid');if(sid==='__new'){const n=String(f.get('n')||'').trim();if(!n){toast('Donnez un nom au semestre');return}sid=(await addDoc(col('semesters'),{name:n,desc:String(f.get('d')||'').trim(),ts:Date.now()})).id}$('#modal').hidden=true;await saveSchedule(sid);return}
   if(e.target.id==='pf'){const f=new FormData(e.target),file=f.get('file'),btn=$('#pbtn');
     if(!file||!(file.type==='application/pdf'||/\.pdf$/i.test(file.name))){toast('Choisissez un fichier PDF');return}
-    if(file.size>8e6){toast('Fichier trop volumineux (8 Mo maximum)');return}
-    btn.disabled=true;try{const b64=(await readFile(file)).split(',')[1],n=Math.ceil(b64.length/CH),id='p'+Date.now().toString(36);
-      for(let i=0;i<n;i++){btn.textContent=`Enregistrement… ${i+1}/${n}`;await setDoc(dref('pdfchunks',id+'_'+i),{did:id,i,data:b64.slice(i*CH,(i+1)*CH)})}
-      await setDoc(dref('pdfs',id),{title:String(f.get('t')||'').trim()||file.name.replace(/\.pdf$/i,''),cid:f.get('c')||'',size:file.size,n,ts:Date.now()});closeModal();toast('Document ajouté')}
-    catch(x){console.error(x);btn.disabled=false;btn.textContent='Enregistrer';toast('Enregistrement impossible : vérifiez votre connexion')}return}
+    if(file.size>500*1048576){toast('Fichier trop volumineux (500 Mo maximum)');return}
+    btn.disabled=true;try{const id='p'+Date.now().toString(36),path=F?`users/${S.user.uid}/pdfs/${id}.pdf`:'';
+      if(F)await new Promise((ok,ko)=>{const t=F.uploadBytesResumable(F.ref(st,path),file,{contentType:'application/pdf'});t.on('state_changed',x=>{btn.textContent=`Envoi… ${Math.round(x.bytesTransferred/x.totalBytes*100)} %`},ko,ok)});else mem[id]=file;
+      await setDoc(dref('pdfs',id),{title:String(f.get('t')||'').trim()||file.name.replace(/\.pdf$/i,''),cid:f.get('c')||'',size:file.size,path,ts:Date.now()});closeModal();toast('Document ajouté')}
+    catch(x){console.error(x);btn.disabled=false;btn.textContent='Enregistrer';toast('Envoi impossible : vérifiez votre connexion et les règles Firebase Storage')}return}
   if(e.target.id==='man'){addManual(Object.fromEntries(new FormData(e.target)));return}
   if(e.target.id==='login'){const f=new FormData(e.target),em=String(f.get('e')).trim(),pw=String(f.get('p')),er=$('#err');
     if(left()>0){tick();return}
