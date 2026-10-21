@@ -117,24 +117,25 @@ const addDoc=async(c,d)=>{const id='d'+Math.random().toString(36).slice(2,9);sto
 const setDoc=async(r,d,o)=>{put(r,d,o);notify()};
 const updateDoc=async(r,d)=>{put(r,d,{merge:1});notify()};
 const deleteDoc=async r=>{delete store[r.path];notify()};
+const getDocs=async q=>({docs:list(q)});
 const writeBatch=()=>{const ops=[];return{set:(r,d,o)=>ops.push(()=>put(r,d,o)),delete:r=>ops.push(()=>delete store[r.path]),commit:async()=>{ops.forEach(f=>f());notify()}}};
 const reset=()=>{Object.keys(store).forEach(k=>delete store[k]);notify()};
 
 const SAMPLE=['Algorithmique','Base de données','Réseaux informatiques','Génie logiciel','Intelligence artificielle','Anglais technique'];
 const pic=(h,t)=>'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><rect width="300" height="300" fill="hsl(${h} 90% 96%)"/><rect x="24" y="24" width="252" height="252" rx="14" fill="#fff"/><text x="44" y="64" font-family="sans-serif" font-size="18" font-weight="700" fill="hsl(${h} 55% 35%)">${t}</text>${[100,128,156,184,212,240].map((y,i)=>`<rect x="44" y="${y}" width="${200-i*14}" height="7" rx="3.5" fill="hsl(${h} 60% 85%)"/>`).join('')}</svg>`);
-function seedExtras(){
+function seedExtras(P=''){
   const U='users/demo/',day=n=>new Date(Date.now()+n*864e5).toISOString().slice(0,10),now=Date.now();
   const add=(p,d)=>store[U+p]=d;
   [['algorithmique','Complexité algorithmique','Notation O(n), O(n log n), O(n²).\n• Meilleur, moyen et pire cas\n• Un tri fusion reste en O(n log n) dans tous les cas'],
    ['algorithmique','Tri rapide','Choix du pivot, partition, récursivité.\nPire cas O(n²) si le pivot est toujours le minimum.'],
    ['base-de-donnees','Normalisation','1FN : valeurs atomiques.\n2FN : pas de dépendance partielle.\n3FN : pas de dépendance transitive.'],
    ['reseaux-informatiques','Modèle OSI','7 couches : physique, liaison, réseau, transport, session, présentation, application.']
-  ].forEach(([cid,title,body],i)=>add('notes/n'+i,{cid,title,body,ts:now-i*1e5}));
-  add('media/m0',{scope:'c:algorithmique',ref:'',data:pic(225,'Tableau : tri rapide'),desc:'Tableau du cours : déroulement du tri rapide pas à pas.',ts:now});
-  add('media/m1',{scope:'c:algorithmique',ref:'',data:pic(265,'Schéma : arbre binaire'),desc:'Schéma d\'un arbre binaire de recherche, avec les cas de parcours.',ts:now-1});
-  add('media/m2',{scope:'c:algorithmique',ref:'',data:pic(160,'Exemple de partition'),desc:'Exemple de partition autour du pivot, relevé en cours.',ts:now-2});
+  ].forEach(([cid,title,body],i)=>add('notes/n'+i,{cid:P+cid,title,body,ts:now-i*1e5}));
+  add('media/m0',{scope:'c:'+P+'algorithmique',ref:'',data:pic(225,'Tableau : tri rapide'),desc:'Tableau du cours : déroulement du tri rapide pas à pas.',ts:now});
+  add('media/m1',{scope:'c:'+P+'algorithmique',ref:'',data:pic(265,'Schéma : arbre binaire'),desc:'Schéma d\'un arbre binaire de recherche, avec les cas de parcours.',ts:now-1});
+  add('media/m2',{scope:'c:'+P+'algorithmique',ref:'',data:pic(160,'Exemple de partition'),desc:'Exemple de partition autour du pivot, relevé en cours.',ts:now-2});
   [['algorithmique','Série d\'exercices n°3',2],['base-de-donnees','TP : requêtes SQL avancées',4],['reseaux-informatiques','Exposé sur le routage',7],['anglais-technique','Rédiger un résumé d\'article',1]]
-   .forEach(([cid,title,d],i)=>add('tasks/t'+i,{cid,title,due:day(d),done:i===3,ts:now-i}));
+   .forEach(([cid,title,d],i)=>add('tasks/t'+i,{cid:P+cid,title,due:day(d),done:i===3,ts:now-i}));
   add('pfe/main',{title:'Plateforme de suivi énergétique par IoT',theme:'Internet des objets et analyse de données',desc:'Conception d\'une application web qui collecte les mesures de capteurs et affiche la consommation en temps réel.'});
   [['p1','Étude de l\'existant',null,0],['p1a','Analyse de 5 solutions concurrentes','p1',1],['p1b','Recueil des besoins','p1',1],
    ['p2','Conception',null,0],['p2a','Schéma de la base de données','p2',1],['p2b','Maquettes des écrans','p2',0],
@@ -146,7 +147,7 @@ function seedExtras(){
   notify();
 }
 
-return {collection,doc,where,query,onSnapshot,addDoc,setDoc,updateDoc,deleteDoc,writeBatch,reset,SAMPLE,seedExtras}})();
+return {collection,doc,where,query,onSnapshot,addDoc,setDoc,updateDoc,deleteDoc,getDocs,writeBatch,reset,SAMPLE,seedExtras}})();
 /* ===== 3. APPLICATION ===== */
 let F=null,auth,db;
 const LIVE=!/^VOTRE_/.test(cfg.apiKey);
@@ -155,15 +156,18 @@ try{if(!LIVE)throw 'demo';const u=m=>`https://www.gstatic.com/firebasejs/10.14.1
   F={...b,...c};const app=a.initializeApp(cfg);auth=F.getAuth(app);await F.setPersistence(auth,F.inMemoryPersistence);db=F.getFirestore(app)}
 catch(e){if(LIVE)console.warn('Firebase indisponible',e)}
 let X=F||D;
-const [collection,doc,addDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch]=['collection','doc','addDoc','setDoc','updateDoc','deleteDoc','onSnapshot','query','where','writeBatch'].map(n=>(...a)=>X[n](...a));
+const [collection,doc,addDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,where,writeBatch,getDocs]=['collection','doc','addDoc','setDoc','updateDoc','deleteDoc','onSnapshot','query','where','writeBatch','getDocs'].map(n=>(...a)=>X[n](...a));
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
 const hue=s=>[...norm(s)].reduce((a,c)=>(a*31+c.charCodeAt(0))&0xffff,7)%360;
 const slug=s=>norm(s).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'c'+hue(s);
-const S={user:null,ready:false,profile:{},courses:[],tasks:[],ptasks:[],pfe:null,notes:[],media:[],view:'home',cid:null,tab:'notes',found:null,slots:{},manual:false,notice:'',demo:false,busy:'',w:{},subs:[]};
+const S={sid:null,imp:false,target:null,mig:0,semesters:[],pdfs:[],ld:{},user:null,ready:false,profile:{},courses:[],tasks:[],ptasks:[],pfe:null,notes:[],media:[],view:'home',cid:null,tab:'notes',found:null,slots:{},manual:false,notice:'',demo:false,busy:'',w:{},subs:[]};
 const col=p=>collection(db,'users',S.user.uid,p), dref=(p,id)=>doc(db,'users',S.user.uid,p,id);
-let pend=null,stream=null,back=null,last=Date.now(),tk=null;
+let pend=null,stream=null,back=null,last=Date.now(),tk=null,purl=null;
+const cs=()=>S.courses.filter(c=>c.sid===S.sid),TS=()=>S.tasks.filter(t=>cs().some(c=>c.id===t.cid)),semOf=id=>S.semesters.find(s=>s.id===id),CH=7e5;
+/* Migration : anciennes rubriques sans semestre -> « Semestre 1 » */
+function mig(){if(S.mig||!S.ld.courses||!S.ld.semesters||S.semesters.length||!S.courses.some(c=>!c.sid))return;S.mig=1;const b=writeBatch(db);b.set(dref('semesters','semestre-1'),{name:'Semestre 1',desc:'Rubriques déjà existantes',ts:Date.now()});S.courses.filter(c=>!c.sid).forEach(c=>b.set(dref('courses',c.id),{sid:'semestre-1'},{merge:true}));b.commit()}
 /* ---------- Sécurité : blocage après 8 échecs (5 min) et inactivité (5 min) ---------- */
 const LK='kampus_lock',MAXTRY=8,LOCKMS=300000,IDLE=300000;
 const lk=()=>{try{return JSON.parse(localStorage.getItem(LK))||{n:0,until:0}}catch{return{n:0,until:0}}};
@@ -175,17 +179,17 @@ function tick(){clearInterval(tk);const f=()=>{const e=$('#err'),b=$('#login .bt
 
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2400)}
 function openModal(h){$('#modal').innerHTML=`<div class="sheet">${h}</div>`;$('#modal').hidden=false}
-function closeModal(){stream?.getTracks().forEach(t=>t.stop());stream=null;$('#modal').hidden=true;const p=pend;pend=null;p?.(null)}
+function closeModal(){if(purl){URL.revokeObjectURL(purl);purl=null}stream?.getTracks().forEach(t=>t.stop());stream=null;$('#modal').hidden=true;const p=pend;pend=null;p?.(null)}
 const sub=u=>S.subs.push(u);
 function watch(k,q){S.w[k]?.();S[k]=[];S.w[k]=q?onSnapshot(q,s=>{S[k]=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.ts||0)-(a.ts||0));render()}):null}
 
 /* ---------- Auth & données ---------- */
 function start(u){
   S.subs.forEach(f=>f());S.subs=[];Object.keys(S.w).forEach(k=>watch(k,null));
-  S.user=u;if(u){S.notice='';last=Date.now()}S.ready=false;S.profile={};S.view='home';S.cid=null;S.found=null;S.slots={};S.manual=false;
-  if(u){const uid=u.uid,c=p=>collection(db,'users',uid,p),list=(p,k)=>sub(onSnapshot(c(p),s=>{S[k]=s.docs.map(d=>({id:d.id,...d.data()}));render()}));
+  S.user=u;if(u){S.notice='';last=Date.now()}S.ready=false;S.profile={};S.view='home';S.cid=null;S.found=null;S.slots={};S.manual=false;S.sid=null;S.imp=false;S.target=null;S.mig=0;S.ld={};
+  if(u){const uid=u.uid,c=p=>collection(db,'users',uid,p),list=(p,k)=>sub(onSnapshot(c(p),s=>{S[k]=s.docs.map(d=>({id:d.id,...d.data()}));S.ld[k]=1;mig();render()}));
     sub(onSnapshot(doc(db,'users',uid),d=>{S.profile=d.data()||{};S.ready=true;render()},err=>{console.error(err);toast('Accès refusé : vérifiez les règles Firestore')}));
-    list('courses','courses');list('tasks','tasks');list('ptasks','ptasks');
+    list('courses','courses');list('tasks','tasks');list('ptasks','ptasks');list('semesters','semesters');list('pdfs','pdfs');
     sub(onSnapshot(doc(db,'users',uid,'pfe','main'),d=>{S.pfe=d.exists()?d.data():null;render()}));
   }
   render();
@@ -280,11 +284,11 @@ async function readSchedule(file){
     return wb.SheetNames.flatMap(s=>XLSX.utils.sheet_to_json(wb.Sheets[s],{header:1,defval:''}).flat()).map(String)}
   if(/\.txt$/.test(n))return [await file.text()];
   throw new Error('Format non pris en charge (image, XLSX, CSV, TXT).')}
-async function saveSchedule(){
+async function saveSchedule(sid){
   const b=writeBatch(db);
-  S.found.forEach(name=>{const d={name,hue:hue(name)},sl=S.slots[norm(name)];if(sl)d.slots=sl;b.set(dref('courses',slug(name)),d,{merge:true})});
+  S.found.forEach(name=>{const d={name,hue:hue(name),sid},sl=S.slots[norm(name)];if(sl)d.slots=sl;b.set(dref('courses',sid+'-'+slug(name)),d,{merge:true})});
   b.set(doc(db,'users',S.user.uid),{hasSchedule:true,scheduleName:S.scheduleName||''},{merge:true});
-  await b.commit();if(S.demo)D.seedExtras();S.found=null;S.slots={};S.manual=false;toast('Rubriques créées')}
+  await b.commit();if(S.demo)D.seedExtras(sid+'-');S.found=null;S.slots={};S.manual=false;S.sid=sid;S.imp=false;S.view='home';toast('Rubriques créées')}
 
 /* ---------- Fiche de révision (PDF) ---------- */
 const JSPDF='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
@@ -318,7 +322,7 @@ const pct=()=>{const l=leaves();return l.length?Math.round(l.filter(isDone).leng
 /* ---------- Vues ---------- */
 const tint=h=>`background:hsl(${h} 95% 93%);color:hsl(${h} 55% 28%)`;
 const course=id=>S.courses.find(c=>c.id===id);
-const IC={home:'<svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>',tasks:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',pfe:'<svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5zM6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>',out:'<svg viewBox="0 0 24 24"><path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9"/></svg>'};
+const IC={home:'<svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>',tasks:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',pfe:'<svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5zM6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>',docs:'<svg viewBox="0 0 24 24"><path d="M6 3h8l5 5v13H6zM14 3v5h5M9 13h6M9 17h6"/></svg>',out:'<svg viewBox="0 0 24 24"><path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9"/></svg>'};
 const nav=(v,ic,l)=>`<button class="nav ${S.view===v?'on':''}" data-a="go" data-v="${v}">${ic} ${l}</button>`;
 function login(){return `<div class="center"><form class="card" id="login"><h1>Kampus</h1><p style="color:var(--mute);margin:6px 0 22px">Connectez-vous avec le compte créé pour vous.</p>${S.notice?`<div class="notice">${esc(S.notice)}</div>`:''}
 <label>Identifiant ou e-mail<input name="e" type="text" required autocomplete="username"></label><label>Mot de passe<input name="p" type="password" required autocomplete="current-password"></label>
@@ -336,27 +340,34 @@ ${f?`<div class="card"><h3>${f.length} matière(s)</h3>
 <div class="row"><button class="btn" data-a="saveS" ${f.length?'':'disabled'}>Créer mes rubriques</button><button class="btn ghost" data-a="cancelS">${S.manual?'Retour':'Changer de fichier'}</button></div></div>${man}`
 :`<label class="drop" for="sch">${S.busy?`<b>${esc(S.busy)}</b>`:'<b>Glissez ou touchez pour choisir un fichier</b>'}<input id="sch" type="file" accept="image/*,.xlsx,.xls,.csv,.txt" hidden></label>
 <div class="row"><button class="btn ghost" data-a="manualS">Saisir mon emploi du temps manuellement</button>${S.demo?'<button class="btn ghost sm" data-a="sample">Utiliser un exemple d\'emploi du temps</button>':''}</div>`}
-${S.courses.length?'<div class="row"><button class="btn ghost sm" data-a="skipS">Annuler</button></div>':''}</div></div>`}
+${S.semesters.length?'<div class="row"><button class="btn ghost sm" data-a="skipS">Annuler</button></div>':''}</div></div>`}
 function addManual(v){const n=v.n.trim().replace(/\s+/g,' ');if(!n)return;const k=norm(n);
   if(!S.found.some(x=>norm(x)===k))S.found.push(n);
   if(v.d||v.s||v.e)(S.slots[k]=S.slots[k]||[]).push({d:v.d||'',s:v.s||'',e:v.e||''});
   render();$('#man input')?.focus()}
-function home(){const open=S.tasks.filter(t=>!t.done).length;
-  return `<h1>Bonjour</h1><p style="color:var(--mute)">${S.courses.length} rubriques actives</p>
-<div class="stats"><div class="card stat"><b>${S.courses.length}</b><span>Matières</span></div><div class="card stat"><b>${open}</b><span>Travaux à faire</span></div>
+function home(){const open=TS().filter(t=>!t.done).length;
+  return `<h1>Bonjour</h1><div class="row" style="margin-top:4px"><span class="badge">${esc(semOf(S.sid)?.name||'')}</span><span style="color:var(--mute)">${cs().length} rubriques actives</span><button class="btn ghost sm" data-a="chSem">Changer de semestre</button></div>
+<div class="stats"><div class="card stat"><b>${cs().length}</b><span>Matières</span></div><div class="card stat"><b>${open}</b><span>Travaux à faire</span></div>
 <div class="card stat" style="cursor:pointer" data-a="go" data-v="pfe"><b>${pct()}%</b><span>Progression PFE</span><div class="bar" style="margin-top:8px"><i style="width:${pct()}%"></i></div></div></div>
-<h2>Mes rubriques</h2><div class="grid">${S.courses.map(c=>`<button class="tile" style="${tint(c.hue)}" data-a="open" data-id="${c.id}"><b>${esc(c.name)}</b><span><small style="display:block">${(n=>n+(n>1?' travaux en cours':' travail en cours'))(S.tasks.filter(t=>t.cid===c.id&&!t.done).length)}</small>${c.slots?.length?`<small style="display:block">${esc(slotTxt(c.slots))}</small>`:''}</span></button>`).join('')}</div>
+<h2>Mes rubriques</h2><div class="grid">${cs().map(c=>`<button class="tile" style="${tint(c.hue)}" data-a="open" data-id="${c.id}"><b>${esc(c.name)}</b><span><small style="display:block">${(n=>n+(n>1?' travaux en cours':' travail en cours'))(S.tasks.filter(t=>t.cid===c.id&&!t.done).length)}</small>${c.slots?.length?`<small style="display:block">${esc(slotTxt(c.slots))}</small>`:''}</span></button>`).join('')}</div>
 <div class="row"><button class="btn sm" data-a="newCourse">Ajouter une rubrique</button><button class="btn ghost sm" data-a="newSched">Mettre à jour l'emploi du temps</button></div>`}
 function coursePage(){const c=course(S.cid);if(!c)return '<div class="empty">Rubrique introuvable</div>';
   const t=S.tasks.filter(x=>x.cid===c.id);
   return `<button class="btn ghost sm" data-a="go" data-v="home">Retour</button><div class="row sp" style="margin-top:6px"><h1>${esc(c.name)}</h1><span class="row" style="margin:0"><button class="btn sm" data-a="fiche">Fiche de révision (PDF)</button><button class="btn del sm" data-a="delc" data-id="${c.id}">Supprimer la rubrique</button></span></div>${c.slots?.length?`<p style="color:var(--mute)">${esc(slotTxt(c.slots))}</p>`:''}
-<div class="tabs">${[['notes','Notes'],['photos','Captures'],['tasks','Travaux']].map(([k,l])=>`<button class="${S.tab===k?'on':''}" data-a="tab" data-t="${k}">${l}</button>`).join('')}</div>
+<div class="tabs">${[['notes','Notes'],['photos','Captures'],['tasks','Travaux'],['later','À lire plus tard']].map(([k,l])=>`<button class="${S.tab===k?'on':''}" data-a="tab" data-t="${k}">${l}</button>`).join('')}</div>
 ${S.tab==='notes'?`<button class="btn" data-a="note">+ Nouvelle note</button><div style="margin-top:16px">${S.notes.map(n=>`<div class="card note"><div class="row sp" style="margin:0"><b>${esc(n.title)}</b><span class="row" style="margin:0"><button class="btn ghost sm" data-a="note" data-id="${n.id}">Modifier</button><button class="btn del sm" data-a="del" data-p="notes" data-id="${n.id}">Suppr.</button></span></div><p>${esc(n.body)}</p></div>`).join('')||'<div class="empty">Aucune note. Ajoutez les notions essentielles du cours.</div>'}</div>`
 :S.tab==='photos'?`<button class="btn" data-a="photo" data-s="c:${c.id}">Ajouter une capture</button><div class="caps">${S.media.map(capCard).join('')}</div>${S.media.length?'':'<div class="empty">Aucune capture. Photographiez votre tableau ou votre cahier, puis décrivez-la.</div>'}`
-:`<button class="btn" data-a="task" data-c="${c.id}">+ Travail à faire</button><div class="card" style="margin-top:16px">${t.map(taskRow).join('')||'<div class="empty">Rien à rendre.</div>'}</div>`}`}
+:S.tab==='later'?pdfBlock(c.id):`<button class="btn" data-a="task" data-c="${c.id}">+ Travail à faire</button><div class="card" style="margin-top:16px">${t.map(taskRow).join('')||'<div class="empty">Rien à rendre.</div>'}</div>`}`}
+const sz=n=>n>1e6?(n/1e6).toFixed(1)+' Mo':Math.max(1,Math.round(n/1e3))+' Ko';
+const pdfRow=p=>`<div class="item"><div class="g"><div class="t" style="font-weight:600">${esc(p.title)}</div><small>${esc(course(p.cid)?.name||'Sans rubrique')} · ${sz(p.size)} · ${new Date(p.ts).toLocaleDateString('fr-FR')}</small></div><span class="row" style="margin:0"><button class="btn ghost sm" data-a="pread" data-id="${p.id}">Lire</button><button class="btn ghost sm" data-a="pdl" data-id="${p.id}">Télécharger</button><button class="btn del sm" data-a="pdelf" data-id="${p.id}">Supprimer</button></span></div>`;
+const pdfList=l=>`<div class="card" style="margin-top:16px">${[...l].sort((a,b)=>b.ts-a.ts).map(pdfRow).join('')||'<div class="empty">Aucun document. Ajoutez un PDF précieux à lire plus tard.</div>'}</div>`;
+const pdfBlock=cid=>`<button class="btn" data-a="padd" data-c="${cid}">+ Ajouter un PDF</button>${pdfList(S.pdfs.filter(p=>p.cid===cid))}`;
+const docsPage=()=>`<h1>Documents</h1><p style="color:var(--mute)">Vos cours à lire plus tard, conservés d'une session à l'autre.</p><div class="row"><button class="btn" data-a="padd">+ Ajouter un PDF</button></div>${pdfList(S.pdfs)}`;
+async function pdfBlob(p){const {docs}=await getDocs(query(col('pdfchunks'),where('did','==',p.id)));const b=docs.map(d=>d.data()).sort((a,b)=>a.i-b.i);if(b.length!==p.n)throw 0;const bin=atob(b.map(x=>x.data).join('')),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:'application/pdf'})}
+const picker=()=>`<div class="center"><div style="width:min(640px,100%)"><h1>Choisissez votre semestre</h1><p style="color:var(--mute);margin:8px 0 22px">Touchez un semestre pour retrouver vos rubriques, ou ajoutez-en un nouveau.</p><div class="grid" style="grid-template-columns:1fr">${[...S.semesters].sort(asc).map(x=>`<div class="card" style="cursor:pointer" data-a="pickS" data-id="${x.id}"><div class="row sp" style="margin:0"><b>${esc(x.name)}</b><button class="btn ghost sm" data-a="editS" data-id="${x.id}">Modifier</button></div>${x.desc?`<p class="desc">${esc(x.desc)}</p>`:''}<small style="color:var(--mute)">${S.courses.filter(c=>c.sid===x.id).length} rubrique(s)</small></div>`).join('')}</div><div class="row"><button class="btn" data-a="addS">+ Ajouter un semestre</button><button class="btn ghost" data-a="out">Se déconnecter</button></div></div></div>`;
 const capCard=m=>`<figure class="cap"><img src="${m.data}" data-a="view" data-id="${m.id}" alt="${esc(m.desc||'Capture')}"><div class="cb"><p class="${m.desc?'':'none'}">${esc(m.desc||'Aucune description')}</p><div class="row"><button class="btn ghost sm" data-a="editcap" data-id="${m.id}">Modifier</button><button class="btn del sm" data-a="delm" data-id="${m.id}">Supprimer</button></div></div></figure>`;
 const taskRow=t=>`<div class="item ${t.done?'done':''}"><input type="checkbox" data-a="tdone" data-id="${t.id}" ${t.done?'checked':''}><div class="g"><div class="t">${esc(t.title)}</div><small>${esc(course(t.cid)?.name||'')}${t.due?' · pour le '+new Date(t.due).toLocaleDateString('fr-FR'):''}</small></div><button class="btn del sm" data-a="del" data-p="tasks" data-id="${t.id}">×</button></div>`;
-function tasksPage(){const l=[...S.tasks].sort((a,b)=>(a.done-b.done)||(a.due||'9').localeCompare(b.due||'9'));
+function tasksPage(){const l=[...TS()].sort((a,b)=>(a.done-b.done)||(a.due||'9').localeCompare(b.due||'9'));
   return `<h1>Travaux à faire</h1><div class="row"><button class="btn" data-a="task">+ Ajouter un travail</button></div><div class="card" style="margin-top:16px">${l.map(taskRow).join('')||'<div class="empty">Aucun travail. Profitez-en !</div>'}</div>`}
 const annRow=t=>{const ok=isDone(t),n=S.media.filter(x=>x.ref===t.id).length,r=!!(t.report||'').trim();
   return `<div class="item sub ${ok?'done':''}"><input type="checkbox" data-a="pdone" data-id="${t.id}" ${ok?'checked':''} aria-label="Marquer comme exécutée"><div class="g"><div class="t">${esc(t.title)}</div>${t.desc?`<small>${esc(t.desc)}</small>`:''}<div class="badges"><span class="badge">${n} capture${n>1?'s':''}</span><span class="badge ${r?'ok':'warn'}">${r?'Compte rendu rédigé':'Compte rendu manquant'}</span></div></div><span class="row" style="margin:0"><button class="btn ghost sm" data-a="pdetail" data-id="${t.id}">Ouvrir</button><button class="btn ghost sm" data-a="ptask" data-id="${t.id}">Modifier</button><button class="btn del sm" data-a="pdel" data-id="${t.id}">Supprimer</button></span></div>`};
@@ -375,12 +386,13 @@ function pfePage(){const p=S.pfe;
 function render(){const a=$('#app');
   if(!S.user){a.innerHTML=login();if(left()>0)tick();return}
   if(!S.ready){a.innerHTML='<div class="center"><b>Chargement…</b></div>';return}
-  if(!S.profile.hasSchedule||S.found||S.busy){a.innerHTML=upload();return}
-  const body=S.view==='course'?coursePage():S.view==='tasks'?tasksPage():S.view==='pfe'?pfePage():home();
-  a.innerHTML=`<div class="shell"><aside><div class="logo">Kampus</div>${nav('home',IC.home,'Accueil')}${nav('tasks',IC.tasks,'Travaux')}${nav('pfe',IC.pfe,'Mon PFE')}
-<div class="side-t">Rubriques</div>${S.courses.map(c=>`<button class="nav ${S.cid===c.id&&S.view==='course'?'on':''}" data-a="open" data-id="${c.id}"><span class="dot" style="background:hsl(${c.hue} 70% 55%)"></span>${esc(c.name)}</button>`).join('')}
+  if(S.found||S.busy||S.imp||(S.ld.courses&&S.ld.semesters&&!S.semesters.length&&!S.courses.length)){a.innerHTML=upload();return}
+  if(!S.sid||!semOf(S.sid)){a.innerHTML=S.semesters.length?picker():'<div class="center"><b>Chargement…</b></div>';return}
+  const body=S.view==='course'?coursePage():S.view==='tasks'?tasksPage():S.view==='pfe'?pfePage():S.view==='docs'?docsPage():home();
+  a.innerHTML=`<div class="shell"><aside><div class="logo">Kampus</div>${nav('home',IC.home,'Accueil')}${nav('tasks',IC.tasks,'Travaux')}${nav('pfe',IC.pfe,'Mon PFE')}${nav('docs',IC.docs,'Documents')}
+<div class="side-t">Rubriques</div>${cs().map(c=>`<button class="nav ${S.cid===c.id&&S.view==='course'?'on':''}" data-a="open" data-id="${c.id}"><span class="dot" style="background:hsl(${c.hue} 70% 55%)"></span>${esc(c.name)}</button>`).join('')}
 <div class="side-t"><button class="nav" data-a="out">${IC.out} Se déconnecter</button></div></aside><main>${body}</main>
-<nav class="bottom">${nav('home',IC.home,'Accueil')}${nav('tasks',IC.tasks,'Travaux')}${nav('pfe',IC.pfe,'PFE')}<button class="nav" data-a="out">${IC.out} Quitter</button></nav></div>`}
+<nav class="bottom">${nav('home',IC.home,'Accueil')}${nav('tasks',IC.tasks,'Travaux')}${nav('pfe',IC.pfe,'PFE')}${nav('docs',IC.docs,'Docs')}<button class="nav" data-a="out">${IC.out} Quitter</button></nav></div>`}
 
 /* ---------- Événements ---------- */
 const go=v=>{S.view=v;S.cid=null;if(v==='pfe')watch('media',query(col('media'),where('scope','==','pfe')));else watch('media',null);watch('notes',null);render();scrollTo(0,0)};
@@ -402,12 +414,12 @@ ${ms.length?`<div class="sec">Captures à inclure</div>${ms.map(m=>`<label class
 <div class="row"><button class="btn" id="fibtn">Télécharger le PDF</button><button type="button" class="btn ghost" data-a="close">Annuler</button></div></form>`)},
  manualS:()=>{S.found=[];S.slots={};S.manual=true;render()},
  newCourse:async()=>{const v=await ask('Nouvelle rubrique',[{k:'n',l:'Nom de la matière *',v:'',req:1},{k:'d',l:'Jour (facultatif)',t:'select',v:'',o:[['','Non précisé'],...DAYS.map(d=>[d,d])]},{k:'s',l:'Début (facultatif)',t:'time',v:''},{k:'e',l:'Fin (facultatif)',t:'time',v:''}],'Créer');
-  if(!v)return;const n=v.n.trim().replace(/\s+/g,' '),id=slug(n),slots=[...(course(id)?.slots||[])];if(v.d||v.s||v.e)slots.push({d:v.d||'',s:v.s||'',e:v.e||''});
-  await setDoc(dref('courses',id),{name:n,hue:hue(n),slots},{merge:true});toast('Rubrique créée')},
+  if(!v)return;const n=v.n.trim().replace(/\s+/g,' '),id=S.sid+'-'+slug(n),slots=[...(course(id)?.slots||[])];if(v.d||v.s||v.e)slots.push({d:v.d||'',s:v.s||'',e:v.e||''});
+  await setDoc(dref('courses',id),{name:n,hue:hue(n),slots,sid:S.sid},{merge:true});toast('Rubrique créée')},
  del:async e=>{if(confirm('Supprimer ?'))await deleteDoc(dref(e.p,e.id))},
  note:async e=>{const n=S.notes.find(x=>x.id===e.id)||{};const v=await ask(n.id?'Modifier la note':'Nouvelle note',[{k:'title',l:'Titre',v:n.title,req:1},{k:'body',l:'Notion essentielle',t:'area',v:n.body}]);if(!v)return;
   n.id?await updateDoc(dref('notes',n.id),v):await addDoc(col('notes'),{...v,cid:S.cid,ts:Date.now()})},
- task:async e=>{const v=await ask('Travail à faire',[{k:'title',l:'Intitulé',v:'',req:1},{k:'cid',l:'Matière',t:'select',v:e.c||S.cid||S.courses[0]?.id,o:S.courses.map(c=>[c.id,c.name])},{k:'due',l:'Pour le',t:'date',v:''}],'Ajouter');if(v)await addDoc(col('tasks'),{...v,done:false,ts:Date.now()})},
+ task:async e=>{const v=await ask('Travail à faire',[{k:'title',l:'Intitulé',v:'',req:1},{k:'cid',l:'Matière',t:'select',v:e.c||S.cid||cs()[0]?.id,o:cs().map(c=>[c.id,c.name])},{k:'due',l:'Pour le',t:'date',v:''}],'Ajouter');if(v)await addDoc(col('tasks'),{...v,done:false,ts:Date.now()})},
  tdone:e=>updateDoc(dref('tasks',e.id),{done:!S.tasks.find(t=>t.id===e.id).done}),
  pfeEdit:async()=>{const p=S.pfe||{};const v=await ask(S.pfe?'Modifier mon PFE':'Ajouter mon PFE',[{k:'title',l:'Titre du PFE *',v:p.title,req:1},{k:'theme',l:'Thème',v:p.theme},{k:'desc',l:'Description',t:'area',v:p.desc,rows:5}]);if(v)await setDoc(dref('pfe','main'),{title:v.title.trim(),theme:(v.theme||'').trim(),desc:(v.desc||'').trim()},{merge:true})},
  pfeDel:async()=>{if(!confirm('Supprimer le PFE avec toutes ses tâches, comptes rendus et captures ? Cette action est définitive.'))return;const b=writeBatch(db);b.delete(dref('pfe','main'));S.ptasks.forEach(t=>b.delete(dref('ptasks',t.id)));S.media.forEach(m=>b.delete(dref('media',m.id)));await b.commit();toast('PFE supprimé')},
@@ -436,9 +448,17 @@ ${ms.length?`<div class="sec">Captures à inclure</div>${ms.map(m=>`<label class
  shot:async e=>{await addPhoto('pfe',e.id);setTimeout(()=>A.pdetail(e),60)},
  rm:e=>{const x=S.found.splice(+e.i,1)[0];delete S.slots[norm(x)];render()},
  addf:async()=>{const v=await ask('Ajouter une matière',[{k:'n',l:'Nom',v:'',req:1}],'Ajouter');if(v&&!S.found.some(x=>norm(x)===norm(v.n)))S.found.push(v.n.trim());render()},
- saveS:()=>saveSchedule(),cancelS:()=>{S.found=null;S.slots={};S.manual=false;render()},
- newSched:async()=>{await setDoc(doc(db,'users',S.user.uid),{hasSchedule:false},{merge:true})},
- skipS:async()=>{await setDoc(doc(db,'users',S.user.uid),{hasSchedule:true},{merge:true})}
+ saveS:()=>{const has=S.semesters.length;openModal(`<form id="sf"><h3>Pour quel semestre ?</h3>${has?`<label>Semestre<select name="sid" id="ssel">${[...S.semesters].sort(asc).map(x=>`<option value="${x.id}" ${x.id===S.target?'selected':''}>${esc(x.name)}</option>`).join('')}<option value="__new" ${S.target?'':'selected'}>+ Nouveau semestre</option></select></label>`:'<input type="hidden" name="sid" value="__new">'}<div id="snew" ${has&&S.target?'hidden':''}><label>Nom du semestre *<input name="n" maxlength="60" placeholder="Ex. : Semestre 5"></label><label>Description<textarea name="d" rows="3" maxlength="200" placeholder="Ex. : 3e année, 2025–2026"></textarea></label></div><div class="row"><button class="btn">Valider</button><button type="button" class="btn ghost" data-a="close">Annuler</button></div></form>`)},
+ pickS:e=>{S.sid=e.id;go('home')},chSem:()=>{S.sid=null;go('home')},
+ addS:()=>{S.imp=true;S.target=null;S.found=null;S.manual=false;S.slots={};render()},
+ editS:async e=>{const x=semOf(e.id);if(!x)return;const v=await ask('Modifier le semestre',[{k:'name',l:'Nom *',v:x.name,req:1},{k:'desc',l:'Description',t:'area',v:x.desc,rows:3}]);if(v)await updateDoc(dref('semesters',x.id),{name:v.name.trim(),desc:(v.desc||'').trim()})},
+ padd:e=>openModal(`<form id="pf"><h3>Ajouter un PDF</h3><label>Fichier PDF (8 Mo max) *<input type="file" name="file" accept="application/pdf,.pdf" required></label><label>Titre<input name="t" maxlength="120" placeholder="Par défaut : nom du fichier"></label><label>Rubrique<select name="c"><option value="">Aucune</option>${S.courses.map(c=>`<option value="${c.id}" ${c.id===(e.c||'')?'selected':''}>${esc(c.name)}${semOf(c.sid)?' ('+esc(semOf(c.sid).name)+')':''}</option>`).join('')}</select></label><div class="row"><button class="btn" id="pbtn">Enregistrer</button><button type="button" class="btn ghost" data-a="close">Annuler</button></div></form>`),
+ pread:async e=>{const p=S.pdfs.find(x=>x.id===e.id);if(!p)return;toast('Ouverture…');try{const u=URL.createObjectURL(await pdfBlob(p));openModal(`<h3>${esc(p.title)}</h3><iframe src="${u}" title="${esc(p.title)}" style="width:100%;height:65vh;border:0;border-radius:14px;background:#F0F3FF"></iframe><div class="row"><a class="btn ghost" href="${u}" target="_blank" rel="noopener">Ouvrir dans un onglet</a><button class="btn ghost" data-a="close">Fermer</button></div>`);purl=u}catch{toast('Lecture impossible : document incomplet ou réseau indisponible')}},
+ pdl:async e=>{const p=S.pdfs.find(x=>x.id===e.id);if(!p)return;try{const u=URL.createObjectURL(await pdfBlob(p)),a=document.createElement('a');a.href=u;a.download=slug(p.title)+'.pdf';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4e4)}catch{toast('Téléchargement impossible')}},
+ pdelf:async e=>{const p=S.pdfs.find(x=>x.id===e.id);if(!p||!confirm('Supprimer ce document définitivement ?'))return;const b=writeBatch(db);b.delete(dref('pdfs',p.id));for(let i=0;i<p.n;i++)b.delete(dref('pdfchunks',p.id+'_'+i));await b.commit();toast('Document supprimé')},
+cancelS:()=>{S.found=null;S.slots={};S.manual=false;render()},
+ newSched:()=>{S.imp=true;S.target=S.sid;render()},
+ skipS:()=>{S.imp=false;S.found=null;render()}
 };
 document.addEventListener('click',e=>{const t=e.target.closest('[data-a]');if(t&&A[t.dataset.a]){if(t.type==='checkbox')e.stopPropagation();A[t.dataset.a](t.dataset)}else if(e.target.id==='modal'){back=null;closeModal()}});
 document.addEventListener('submit',async e=>{e.preventDefault();
@@ -450,6 +470,14 @@ document.addEventListener('submit',async e=>{e.preventDefault();
     try{await fichePdf(String(f.get('t')).trim()||'Fiche de révision',c,ns,ms);closeModal();toast('Fiche téléchargée')}
     catch(x){console.error(x);btn.disabled=false;btn.textContent='Télécharger le PDF';toast('Création du PDF impossible : vérifiez votre connexion')}return}
   if(e.target.id==='rep'){const id=e.target.dataset.id,t=S.ptasks.find(x=>x.id===id),r=String(new FormData(e.target).get('report')||'').trim(),u={report:r};if(!r&&t.done)u.done=false;Object.assign(t,u);await updateDoc(dref('ptasks',id),u);toast('Compte rendu enregistré');A.pdetail({id});return}
+  if(e.target.id==='sf'){const f=new FormData(e.target);let sid=f.get('sid');if(sid==='__new'){const n=String(f.get('n')||'').trim();if(!n){toast('Donnez un nom au semestre');return}sid=(await addDoc(col('semesters'),{name:n,desc:String(f.get('d')||'').trim(),ts:Date.now()})).id}$('#modal').hidden=true;await saveSchedule(sid);return}
+  if(e.target.id==='pf'){const f=new FormData(e.target),file=f.get('file'),btn=$('#pbtn');
+    if(!file||!(file.type==='application/pdf'||/\.pdf$/i.test(file.name))){toast('Choisissez un fichier PDF');return}
+    if(file.size>8e6){toast('Fichier trop volumineux (8 Mo maximum)');return}
+    btn.disabled=true;try{const b64=(await readFile(file)).split(',')[1],n=Math.ceil(b64.length/CH),id='p'+Date.now().toString(36);
+      for(let i=0;i<n;i++){btn.textContent=`Enregistrement… ${i+1}/${n}`;await setDoc(dref('pdfchunks',id+'_'+i),{did:id,i,data:b64.slice(i*CH,(i+1)*CH)})}
+      await setDoc(dref('pdfs',id),{title:String(f.get('t')||'').trim()||file.name.replace(/\.pdf$/i,''),cid:f.get('c')||'',size:file.size,n,ts:Date.now()});closeModal();toast('Document ajouté')}
+    catch(x){console.error(x);btn.disabled=false;btn.textContent='Enregistrer';toast('Enregistrement impossible : vérifiez votre connexion')}return}
   if(e.target.id==='man'){addManual(Object.fromEntries(new FormData(e.target)));return}
   if(e.target.id==='login'){const f=new FormData(e.target),em=String(f.get('e')).trim(),pw=String(f.get('p')),er=$('#err');
     if(left()>0){tick();return}
@@ -460,6 +488,7 @@ document.addEventListener('submit',async e=>{e.preventDefault();
     try{await F.signInWithEmailAndPassword(auth,em,pw);setLk({n:0,until:0})}
     catch(x){const c=x?.code||'';if(c==='auth/network-request-failed')er.textContent='Connexion au serveur impossible. Vérifiez votre réseau.';else bad(c)}}});
 document.addEventListener('change',async e=>{
+  if(e.target.id==='ssel')$('#snew').hidden=e.target.value!=='__new';
   if(e.target.classList.contains('gal')){const f=e.target.files[0];if(f)done(await shrink(await readFile(f)))}
   if(e.target.id==='sch'){const f=e.target.files[0];if(!f)return;S.scheduleName=f.name;S.busy='Analyse en cours… (une photo peut prendre 20 s)';render();
     try{S.found=extract(await readSchedule(f));if(!S.found.length)toast('Aucune matière détectée : ajoutez-les à la main')}catch(x){toast(x.message||'Lecture impossible');S.found=null}
