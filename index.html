@@ -378,7 +378,17 @@ const sz=n=>n>1e6?(n/1e6).toFixed(1)+' Mo':Math.max(1,Math.round(n/1e3))+' Ko';
 const pdfRow=p=>`<div class="item"><div class="g"><div class="t" style="font-weight:600">${esc(p.title)}</div><small>${esc(course(p.cid)?.name||'Sans rubrique')} · ${sz(p.size)} · ${new Date(p.ts).toLocaleDateString('fr-FR')}</small></div><span class="row" style="margin:0"><button class="btn ghost sm" data-a="pread" data-id="${p.id}">Lire</button><button class="btn ghost sm" data-a="pdl" data-id="${p.id}">Télécharger</button><button class="btn del sm" data-a="pdelf" data-id="${p.id}">Supprimer</button></span></div>`;
 const pdfList=l=>`<div class="card" style="margin-top:16px">${[...l].sort((a,b)=>b.ts-a.ts).map(pdfRow).join('')||'<div class="empty">Aucun document. Ajoutez un PDF précieux à lire plus tard.</div>'}</div>`;
 const pdfBlock=cid=>`<button class="btn" data-a="padd" data-c="${cid}">+ Ajouter un PDF</button>${pdfList(S.pdfs.filter(p=>p.cid===cid))}`;
-const docsPage=()=>`<h1>Documents</h1><p style="color:var(--mute)">Vos cours à lire plus tard, conservés d'une session à l'autre.</p><div class="row"><button class="btn" data-a="padd">+ Ajouter un PDF</button></div>${pdfList(S.pdfs)}`;
+const docsPage=()=>`<h1>Documents</h1><div class="tabs">${[['pdf','PDF à lire'],['caps','Captures']].map(([k,l])=>`<button class="${(S.dt||'pdf')===k?'on':''}" data-a="dt" data-t="${k}">${l}</button>`).join('')}</div>${S.dt==='caps'?`<p style="color:var(--mute)">Toutes vos captures (rubriques et PFE) : téléchargez-les pour en garder une copie sur votre appareil.</p>${capsView()}`:`<p style="color:var(--mute)">Vos cours à lire plus tard, conservés d'une session à l'autre.</p><div class="row"><button class="btn" data-a="padd">+ Ajouter un PDF</button></div>${pdfList(S.pdfs)}`}`;
+/* ---- Captures : téléchargement ---- */
+const ZIPJS='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+const loadJs=u=>new Promise((ok,ko)=>{if(window.JSZip)return ok();const e=document.createElement('script');e.src=u;e.onload=ok;e.onerror=ko;document.head.append(e)});
+const dBlob=d=>{const [h,b]=d.split(','),bin=atob(b),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:(/data:([^;]+)/.exec(h)||[])[1]||'image/jpeg'})};
+const saveBlob=(b,n)=>{const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=n;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4e4)};
+const origin=m=>{if(m.scope==='pfe')return{n:'Mon PFE',s:''};const c=course(String(m.scope||'').slice(2));return c?{n:c.name,s:semOf(c.sid)?.name||''}:{n:'Rubrique supprimée',s:''}};
+const capName=(m,i)=>`${String(i+1).padStart(2,'0')}-${(slug(m.desc||'capture')||'capture').slice(0,40)}.${((/^data:image\/(\w+)/.exec(m.data||'')||[])[1]||'jpg').replace('jpeg','jpg')}`;
+const capDl=m=>`<figure class="cap"><img src="${m.data}" data-a="view" data-id="${m.id}" alt="${esc(m.desc||'Capture')}"><div class="cb"><p class="${m.desc?'':'none'}">${esc(m.desc||'Aucune description')}</p><div class="row"><button class="btn ghost sm" data-a="capdl" data-id="${m.id}">Télécharger</button></div></div></figure>`;
+function capsView(){const l=[...S.media].sort((a,b)=>(a.ts||0)-(b.ts||0));if(!l.length)return '<div class="card" style="margin-top:16px"><div class="empty">Aucune capture pour le moment.</div></div>';const g={};l.forEach(m=>{(g[m.scope||'?']??=[]).push(m)});
+ return `<div class="row"><button class="btn" data-a="capzip">Tout télécharger (.zip) · ${l.length}</button></div>`+Object.values(g).map(a=>{const o=origin(a[0]);return `<h2>${esc(o.n)}${o.s?` <small style="color:var(--mute);font-weight:500">· ${esc(o.s)}</small>`:''}</h2><div class="caps">${[...a].reverse().map(capDl).join('')}</div>`}).join('')}
 async function pdfBlob(p){const {docs}=await getDocs(query(col('pdfchunks'),where('did','==',p.id)));const b=docs.map(d=>d.data()).sort((a,b)=>a.i-b.i);if(b.length!==p.n)throw 0;const bin=atob(b.map(x=>x.data).join('')),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:'application/pdf'})}
 const mem={};
 async function pdfUrl(p){if(p.path&&F)return F.getDownloadURL(F.ref(st,p.path));if(mem[p.id])return URL.createObjectURL(mem[p.id]);return URL.createObjectURL(await pdfBlob(p))}
@@ -439,7 +449,7 @@ function render(){const a=$('#app');
 <nav class="bottom">${nav('tasks',IC.tasks,'Travaux')}${nav('pfe',IC.pfe,'PFE')}${nav('home',IC.home,'Accueil')}${nav('docs',IC.docs,'Docs')}<button class="nav" data-a="out">${IC.out} Quitter</button></nav></div>`}
 
 /* ---------- Événements ---------- */
-const go=v=>{S.view=v;S.cid=null;if(v==='pfe')watch('media',query(col('media'),where('scope','==','pfe')));else watch('media',null);watch('notes',null);render();scrollTo(0,0)};
+const go=v=>{S.view=v;S.dt='pdf';S.cid=null;if(v==='pfe')watch('media',query(col('media'),where('scope','==','pfe')));else watch('media',null);watch('notes',null);render();scrollTo(0,0)};
 const A={
  go:e=>go(e.v),out:()=>{if(S.demo){S.demo=false;D.reset();X=F||D;start(null)}else F.signOut(auth)},sample:()=>{S.found=[...D.SAMPLE];S.manual=false;S.slots={};S.scheduleName='exemple.png';render()},close:closeModal,
  open:e=>{S.view='course';S.cid=e.id;S.tab='notes';watch('notes',query(col('notes'),where('cid','==',e.id)));watch('media',query(col('media'),where('scope','==','c:'+e.id)));render()},
@@ -461,7 +471,10 @@ ${ms.length?`<div class="sec">Captures à inclure</div>${ms.map(m=>`<label class
   if(!v)return;const n=v.n.trim().replace(/\s+/g,' '),id=S.sid+'-'+slug(n),slots=[...(course(id)?.slots||[])];if(v.d||v.s||v.e)slots.push({d:v.d||'',s:v.s||'',e:v.e||''});
   await setDoc(dref('courses',id),{name:n,hue:hue(n),slots,sid:S.sid},{merge:true});toast('Rubrique créée')},
  del:async e=>{if(confirm('Supprimer ?'))await deleteDoc(dref(e.p,e.id))},
- tg:()=>{S.tbo=!S.tbo;$('.tb').hidden=!S.tbo;$('#tba').textContent=S.tbo?'▴':'▾';sync()},
+ dt:e=>{S.dt=e.t;watch('media',e.t==='caps'?col('media'):null);render()},
+ capdl:e=>{const m=S.media.find(x=>x.id===e.id);if(!m)return;try{saveBlob(dBlob(m.data),capName(m,0).replace(/^\d+-/,''))}catch{toast('Téléchargement impossible')}},
+ capzip:async()=>{const l=[...S.media].sort((a,b)=>(a.ts||0)-(b.ts||0));if(!l.length)return;toast('Préparation de l\'archive…');try{await loadJs(ZIPJS);const z=new JSZip();l.forEach((m,i)=>{const o=origin(m);z.file(`${[o.s,o.n].filter(Boolean).map(x=>slug(x)||'rubrique').join('/')}/${capName(m,i)}`,dBlob(m.data))});saveBlob(await z.generateAsync({type:'blob'}),'captures-'+new Date().toISOString().slice(0,10)+'.zip');toast('Archive téléchargée')}catch(x){console.error(x);toast('Création de l\'archive impossible')}},
+ tg:() => {S.tbo=!S.tbo;$('.tb').hidden=!S.tbo;$('#tba').textContent=S.tbo?'▴':'▾';sync()},
  note:e=>{const n=S.notes.find(x=>x.id===e.id)||{};openModal(`<form id="nf" data-id="${n.id||''}"><h3>${n.id?'Modifier la note':'Nouvelle note'}</h3><label>Titre<input id="nt" maxlength="120" value="${esc(n.title||'')}"></label>${tb()}<div id="ed" class="ed" contenteditable="true" spellcheck="true">${noteHtml(n)}</div><div class="row"><button class="btn">Enregistrer</button><button type="button" class="btn ghost" data-a="close">Annuler</button></div></form>`,'wide');setTimeout(()=>$('#ed')?.focus(),50)},
  task:async e=>{const v=await ask('Travail à faire',[{k:'title',l:'Intitulé',v:'',req:1},{k:'cid',l:'Matière',t:'select',v:e.c||S.cid||cs()[0]?.id,o:cs().map(c=>[c.id,c.name])},{k:'due',l:'Pour le',t:'date',v:''}],'Ajouter');if(v)await addDoc(col('tasks'),{...v,done:false,ts:Date.now()})},
  tdone:e=>updateDoc(dref('tasks',e.id),{done:!S.tasks.find(t=>t.id===e.id).done}),
