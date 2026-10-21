@@ -394,7 +394,7 @@ function render(){const a=$('#app');
   a.innerHTML=`<div class="shell"><aside><div class="logo">Kampus</div>${nav('home',IC.home,'Accueil')}${nav('tasks',IC.tasks,'Travaux')}${nav('pfe',IC.pfe,'Mon PFE')}${nav('docs',IC.docs,'Documents')}
 <div class="side-t">Rubriques</div>${cs().map(c=>`<button class="nav ${S.cid===c.id&&S.view==='course'?'on':''}" data-a="open" data-id="${c.id}"><span class="dot" style="background:hsl(${c.hue} 70% 55%)"></span>${esc(c.name)}</button>`).join('')}
 <div class="side-t"><button class="nav" data-a="out">${IC.out} Se déconnecter</button></div></aside><main>${body}</main>
-<nav class="bottom">${nav('home',IC.home,'Accueil')}${nav('tasks',IC.tasks,'Travaux')}${nav('pfe',IC.pfe,'PFE')}${nav('docs',IC.docs,'Docs')}<button class="nav" data-a="out">${IC.out} Quitter</button></nav></div>`}
+<nav class="bottom">${nav('tasks',IC.tasks,'Travaux')}${nav('pfe',IC.pfe,'PFE')}${nav('home',IC.home,'Accueil')}${nav('docs',IC.docs,'Docs')}<button class="nav" data-a="out">${IC.out} Quitter</button></nav></div>`}
 
 /* ---------- Événements ---------- */
 const go=v=>{S.view=v;S.cid=null;if(v==='pfe')watch('media',query(col('media'),where('scope','==','pfe')));else watch('media',null);watch('notes',null);render();scrollTo(0,0)};
